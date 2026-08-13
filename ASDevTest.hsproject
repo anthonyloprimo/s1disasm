@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "name": "ASDevTest",
+  "author": "oh my fucking god stop it",
+  "projectType": "sonic1-disassembly",
+  "adapter": {
+    "id": "sonicretro.s1",
+    "name": "Sonic Retro Sonic 1",
+    "location": null
+  },
+  "paths": {
+    "sourceRoot": "."
+  }
+}
