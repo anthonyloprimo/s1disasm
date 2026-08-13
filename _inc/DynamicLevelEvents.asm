@@ -88,10 +88,10 @@ DLE_GHZ1:
 	endif
 
 		move.w	#$300,(v_limitbtm1).w			; initial boundary
-		cmpi.w	#$1780,(v_screenposx).w
+		cmpi.w	#$1700,(v_screenposx).w
 		blo.s	.exit					; branch if camera is left of $1780
 
-		move.w	#$400,(v_limitbtm1).w			; set lower y-boundary
+		move.w	#$420,(v_limitbtm1).w			; set lower y-boundary
 
 	.exit:
 		rts	
@@ -100,7 +100,30 @@ DLE_GHZ1:
 ; Green Hill Zone - Act 2
 
 DLE_GHZ2:
+; HyperSonic dispatcher DLE_GHZ2 begin
+	move.b	(v_dle_routine).w,d0
+	move.w	DLE_GHZ2_Index(pc,d0.w),d0
+	jmp	DLE_GHZ2_Index(pc,d0.w)
+DLE_GHZ2_Index:
+	dc.w	DLE_GHZ2_State0-DLE_GHZ2_Index
+; HyperSonic state-entry state_msqflhjb begin
+	dc.w	DLE_GHZ2_State2-DLE_GHZ2_Index
+; HyperSonic state-entry state_msqflhjb end
+DLE_GHZ2_State0:
+; HyperSonic dispatcher DLE_GHZ2 end
 		move.w	#$300,(v_limitbtm1).w
+; HyperSonic rule camera_x_63D_msq9pumq begin
+	cmpi.w	#$05C0,(v_screenposx).w
+	blo.s	.HS_camera_x_63D_msq9pumq_skip
+	move.w	#$060,(v_limittop1).w
+.HS_camera_x_63D_msq9pumq_skip:
+; HyperSonic rule camera_x_63D_msq9pumq end
+; HyperSonic rule camera_x_8C3_msq9qy8l begin
+	cmpi.w	#$0900,(v_screenposx).w
+	blo.s	.HS_camera_x_8C3_msq9qy8l_skip
+	move.w	#$330,(v_limitbtm1).w
+.HS_camera_x_8C3_msq9qy8l_skip:
+; HyperSonic rule camera_x_8C3_msq9qy8l end
 		cmpi.w	#$ED0,(v_screenposx).w
 		blo.s	.exit
 
@@ -115,11 +138,45 @@ DLE_GHZ2:
 		move.w	#$300,(v_limitbtm1).w
 
 	.exit:
+; HyperSonic rule state_y_390_msqfnse0 begin
+	cmpi.w	#$02C0,(v_screenposy).w
+	blo.s	.HS_state_y_390_msqfnse0_skip
+	move.b	#$02,(v_dle_routine).w
+.HS_state_y_390_msqfnse0_skip:
+; HyperSonic rule state_y_390_msqfnse0 end
 		rts	
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Green Hill Zone - Act 3
 
+; HyperSonic state state_msqflhjb begin
+DLE_GHZ2_State2:
+; HyperSonic rule camera_x_DE1_msqfmt8n begin
+	cmpi.w	#$0D3C,(v_screenposx).w
+	blo.s	.HS_camera_x_DE1_msqfmt8n_skip
+	move.w	#$420,(v_limitbtm1).w
+.HS_camera_x_DE1_msqfmt8n_skip:
+; HyperSonic rule camera_x_DE1_msqfmt8n end
+; HyperSonic rule state_y_2AA_msqfp1yl begin
+	cmpi.w	#$02C0,(v_screenposy).w
+	bhs.s	.HS_state_y_2AA_msqfp1yl_skip
+	move.b	#$00,(v_dle_routine).w
+.HS_state_y_2AA_msqfp1yl_skip:
+; HyperSonic rule state_y_2AA_msqfp1yl end
+; HyperSonic rule camera_x_159E_msqfrkgm begin
+	cmpi.w	#$1400,(v_screenposx).w
+	blo.s	.HS_camera_x_159E_msqfrkgm_skip
+	move.w	#$400,(v_limitbtm1).w
+.HS_camera_x_159E_msqfrkgm_skip:
+; HyperSonic rule camera_x_159E_msqfrkgm end
+; HyperSonic rule camera_x_1DC6_msqg66k6 begin
+	cmpi.w	#$1D60,(v_screenposx).w
+	blo.s	.HS_camera_x_1DC6_msqg66k6_skip
+	move.w	#$300,(v_limitbtm1).w
+.HS_camera_x_1DC6_msqg66k6_skip:
+; HyperSonic rule camera_x_1DC6_msqg66k6 end
+	rts
+; HyperSonic state state_msqflhjb end
 DLE_GHZ3:
 		moveq	#0,d0
 		move.b	(v_dle_routine).w,d0
@@ -308,7 +365,7 @@ DLE_MZ1_Index:	dc.w DLE_MZ1_0-DLE_MZ1_Index
 ; ===========================================================================
 
 DLE_MZ1_0:
-		move.w	#$1D0,(v_limitbtm1).w
+		move.w	#$420,(v_limitbtm1).w
 		cmpi.w	#$700,(v_screenposx).w
 		blo.s	.exit					; branch if camera is left of $700
 
@@ -317,7 +374,7 @@ DLE_MZ1_0:
 		blo.s	.exit					; branch if camera is left of $D00
 
 		move.w	#$340,(v_limitbtm1).w
-		cmpi.w	#$340,(v_screenposy).w
+		cmpi.w	#$2E0,(v_screenposy).w
 		blo.s	.exit					; branch if camera is above $340
 
 		addq.b	#2,(v_dle_routine).w			; goto DLE_MZ1_2 next
@@ -327,7 +384,7 @@ DLE_MZ1_0:
 ; ===========================================================================
 
 DLE_MZ1_2:
-		cmpi.w	#$340,(v_screenposy).w
+		cmpi.w	#$2E0,(v_screenposy).w
 		bhs.s	.next					; branch if camera is below $340
 
 		subq.b	#2,(v_dle_routine).w			; goto DLE_MZ1_0 next

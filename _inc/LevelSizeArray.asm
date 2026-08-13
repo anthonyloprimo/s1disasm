@@ -15,17 +15,17 @@ lvlsize macro left,right,top,bottom
 		;           |      |      |-------------------Top boundary
 		;           |      |      |      |------------Bottom boundary
 		; GHZ       |      |      |      |
-		lvlsize     0, $24BF,     0,  $300 ; GHZ1
+		lvlsize     0, $24BF,     0,  $300; GHZ1
 		lvlsize     0, $1EBF,     0,  $300 ; GHZ2
 		lvlsize     0, $2960,     0,  $300 ; GHZ3
 		lvlsize     0, $2ABF,     0,  $300 ; GHZ4 (unused)
 		; LZ                          
 		lvlsize     0, $19BF,     0,  $530 ; LZ1
 		lvlsize     0, $10AF,     0,  $720 ; LZ2
-		lvlsize     0, $202F, -$100,  $800 ; LZ3 (level wrapping)
+		lvlsize     0, $202F, -$100,  $800; LZ3 (level wrapping)
 		lvlsize     0, $20BF,     0,  $720 ; LZ4 (SBZ3)
 		; MZ                          
-		lvlsize     0, $17BF,     0,  $1D0 ; MZ1
+		lvlsize     0, $17BF,     0,  $400; MZ1
 		lvlsize     0, $17BF,     0,  $520 ; MZ2
 		lvlsize     0, $1800,     0,  $720 ; MZ3
 		lvlsize     0, $16BF,     0,  $720 ; MZ4 (unused)
