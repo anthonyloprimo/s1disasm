@@ -10,5 +10,10 @@
   },
   "paths": {
     "sourceRoot": "."
+  },
+  "objectInformation": {
+    "sonicretro.s1": {
+      "26": "A Monitor, or Item Box contains various helpful and harmful items for the player.  The various subtypes:\n00 - Static does nothing when broken.\n01 - Eggman monitor acts like touching an enemy when broken.\n02 - 1-up monitor.\n03 - Moves faster for a short time.\n04 - Provides a shield that can take a single hit without losing rings or a life, except when being crushed or falling down a bottomless pit.\n05 - Invincible for a short time.\n06 - Adds 10 rings to the player's total.\n07 - S-monitor is unused.\n08 - Goggles monitor is unused."
+    }
   }
 }

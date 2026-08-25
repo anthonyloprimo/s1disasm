@@ -25,7 +25,7 @@ Map_LConv_internal:	mappingsTable
 .wheel4_End
 
 .platform:	spriteHeader
-	spritePiece	-$10, -8, 4, 2, $40, 0, 0, 0, 0
+	spritePiece	-$10, -$8, 4, 2, $40, 0, 0, 0, 0
 .platform_End
 
 	even

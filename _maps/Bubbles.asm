@@ -27,23 +27,23 @@ Map_Bub_internal:	mappingsTable
 	mappingsTableEntry.w	.blank
 
 .bubble1:	spriteHeader
-	spritePiece	-4, -4, 1, 1, 0, 0, 0, 0, 0	; bubbles, increasing in size
+	spritePiece	-$4, -$4, 1, 1, 0, 0, 0, 0, 0
 .bubble1_End
 
 .bubble2:	spriteHeader
-	spritePiece	-4, -4, 1, 1, 1, 0, 0, 0, 0
+	spritePiece	-$4, -$4, 1, 1, $1, 0, 0, 0, 0
 .bubble2_End
 
 .bubble3:	spriteHeader
-	spritePiece	-4, -4, 1, 1, 2, 0, 0, 0, 0
+	spritePiece	-$4, -$4, 1, 1, $2, 0, 0, 0, 0
 .bubble3_End
 
 .bubble4:	spriteHeader
-	spritePiece	-8, -8, 2, 2, 3, 0, 0, 0, 0
+	spritePiece	-$8, -$8, 2, 2, $3, 0, 0, 0, 0
 .bubble4_End
 
 .bubble5:	spriteHeader
-	spritePiece	-8, -8, 2, 2, 7, 0, 0, 0, 0
+	spritePiece	-$8, -$8, 2, 2, $7, 0, 0, 0, 0
 .bubble5_End
 
 .bubble6:	spriteHeader
@@ -55,7 +55,7 @@ Map_Bub_internal:	mappingsTable
 .bubblefull_End
 
 .burst1:	spriteHeader
-	spritePiece	-$10, -$10, 2, 2, $24, 0, 0, 0, 0 ; large bubble bursting
+	spritePiece	-$10, -$10, 2, 2, $24, 0, 0, 0, 0
 	spritePiece	0, -$10, 2, 2, $24, 1, 0, 0, 0
 	spritePiece	-$10, 0, 2, 2, $24, 0, 1, 0, 0
 	spritePiece	0, 0, 2, 2, $24, 1, 1, 0, 0
@@ -69,55 +69,55 @@ Map_Bub_internal:	mappingsTable
 .burst2_End
 
 .zero_sm:	spriteHeader
-	spritePiece	-8, -$C, 2, 3, $2C, 0, 0, 0, 0 ; small, partially-formed countdown numbers
+	spritePiece	-$8, -$C, 2, 3, $2C, 0, 0, 0, 0
 .zero_sm_End
 
 .five_sm:	spriteHeader
-	spritePiece	-8, -$C, 2, 3, $32, 0, 0, 0, 0
+	spritePiece	-$8, -$C, 2, 3, $32, 0, 0, 0, 0
 .five_sm_End
 
 .three_sm:	spriteHeader
-	spritePiece	-8, -$C, 2, 3, $38, 0, 0, 0, 0
+	spritePiece	-$8, -$C, 2, 3, $38, 0, 0, 0, 0
 .three_sm_End
 
 .one_sm:	spriteHeader
-	spritePiece	-8, -$C, 2, 3, $3E, 0, 0, 0, 0
+	spritePiece	-$8, -$C, 2, 3, $3E, 0, 0, 0, 0
 .one_sm_End
 
 .zero:	spriteHeader
-	spritePiece	-8, -$C, 2, 3, $44, 0, 0, 1, 0 ; fully-formed countdown numbers
+	spritePiece	-$8, -$C, 2, 3, $44, 0, 0, 1, 0
 .zero_End
 
 .five:	spriteHeader
-	spritePiece	-8, -$C, 2, 3, $4A, 0, 0, 1, 0
+	spritePiece	-$8, -$C, 2, 3, $4A, 0, 0, 1, 0
 .five_End
 
 .four:	spriteHeader
-	spritePiece	-8, -$C, 2, 3, $50, 0, 0, 1, 0
+	spritePiece	-$8, -$C, 2, 3, $50, 0, 0, 1, 0
 .four_End
 
 .three:	spriteHeader
-	spritePiece	-8, -$C, 2, 3, $56, 0, 0, 1, 0
+	spritePiece	-$8, -$C, 2, 3, $56, 0, 0, 1, 0
 .three_End
 
 .two:	spriteHeader
-	spritePiece	-8, -$C, 2, 3, $5C, 0, 0, 1, 0
+	spritePiece	-$8, -$C, 2, 3, $5C, 0, 0, 1, 0
 .two_End
 
 .one:	spriteHeader
-	spritePiece	-8, -$C, 2, 3, $62, 0, 0, 1, 0
+	spritePiece	-$8, -$C, 2, 3, $62, 0, 0, 1, 0
 .one_End
 
 .bubmaker1:	spriteHeader
-	spritePiece	-8, -8, 2, 2, $68, 0, 0, 0, 0
+	spritePiece	-$8, -$8, 2, 2, $68, 0, 0, 0, 0
 .bubmaker1_End
 
 .bubmaker2:	spriteHeader
-	spritePiece	-8, -8, 2, 2, $6C, 0, 0, 0, 0
+	spritePiece	-$8, -$8, 2, 2, $6C, 0, 0, 0, 0
 .bubmaker2_End
 
 .bubmaker3:	spriteHeader
-	spritePiece	-8, -8, 2, 2, $70, 0, 0, 0, 0
+	spritePiece	-$8, -$8, 2, 2, $70, 0, 0, 0, 0
 .bubmaker3_End
 
 .blank:	spriteHeader

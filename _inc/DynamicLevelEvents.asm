@@ -94,6 +94,12 @@ DLE_GHZ1:
 		move.w	#$420,(v_limitbtm1).w			; set lower y-boundary
 
 	.exit:
+; HyperSonic rule camera_x_247E_mt1l0hxy begin
+	cmpi.w	#$24B0,(v_screenposx).w
+	blo.s	.HS_camera_x_247E_mt1l0hxy_skip
+	move.w	#$3D0,(v_limitbtm1).w
+.HS_camera_x_247E_mt1l0hxy_skip:
+; HyperSonic rule camera_x_247E_mt1l0hxy end
 		rts	
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

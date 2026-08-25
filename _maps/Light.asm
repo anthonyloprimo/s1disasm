@@ -15,7 +15,7 @@ Map_Light_internal:	mappingsTable
 .f0_End
 
 .f1:	spriteHeader
-	spritePiece	-$10, -8, 4, 1, $35, 0, 0, 0, 0
+	spritePiece	-$10, -$8, 4, 1, $35, 0, 0, 0, 0
 	spritePiece	-$10, 0, 4, 1, $35, 0, 1, 0, 0
 .f1_End
 

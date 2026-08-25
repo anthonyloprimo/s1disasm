@@ -12,8 +12,8 @@ Map_Bump_internal:	mappingsTable
 .normal_End
 
 .bumped1:	spriteHeader
-	spritePiece	-$C, -$C, 2, 3, 8, 0, 0, 0, 0
-	spritePiece	4, -$C, 1, 3, 8, 1, 0, 0, 0
+	spritePiece	-$C, -$C, 2, 3, $8, 0, 0, 0, 0
+	spritePiece	$4, -$C, 1, 3, $8, 1, 0, 0, 0
 .bumped1_End
 
 .bumped2:	spriteHeader

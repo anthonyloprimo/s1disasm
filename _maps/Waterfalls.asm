@@ -16,42 +16,42 @@ Map_WFall_internal:	mappingsTable
 	mappingsTableEntry.w	.splash3
 
 .vertnarrow:	spriteHeader
-	spritePiece	-8, -$10, 2, 4, 0, 0, 0, 0, 0
+	spritePiece	-$8, -$10, 2, 4, 0, 0, 0, 0, 0
 .vertnarrow_End
 
 .cornerwide:	spriteHeader
-	spritePiece	-4, -8, 2, 1, 8, 0, 0, 0, 0
+	spritePiece	-$4, -$8, 2, 1, $8, 0, 0, 0, 0
 	spritePiece	-$C, 0, 3, 1, $A, 0, 0, 0, 0
 .cornerwide_End
 
 .cornermedium:	spriteHeader
-	spritePiece	0, -8, 1, 1, 8, 0, 0, 0, 0
-	spritePiece	-8, 0, 2, 1, $D, 0, 0, 0, 0
+	spritePiece	0, -$8, 1, 1, $8, 0, 0, 0, 0
+	spritePiece	-$8, 0, 2, 1, $D, 0, 0, 0, 0
 .cornermedium_End
 
 .cornernarrow:	spriteHeader
-	spritePiece	0, -8, 1, 2, $F, 0, 0, 0, 0
+	spritePiece	0, -$8, 1, 2, $F, 0, 0, 0, 0
 .cornernarrow_End
 
 .cornermedium2:	spriteHeader
-	spritePiece	0, -8, 1, 1, 8, 0, 0, 0, 0
-	spritePiece	-8, 0, 2, 1, $D, 0, 0, 0, 0
+	spritePiece	0, -$8, 1, 1, $8, 0, 0, 0, 0
+	spritePiece	-$8, 0, 2, 1, $D, 0, 0, 0, 0
 .cornermedium2_End
 
 .cornernarrow2:	spriteHeader
-	spritePiece	0, -8, 1, 2, $11, 0, 0, 0, 0
+	spritePiece	0, -$8, 1, 2, $11, 0, 0, 0, 0
 .cornernarrow2_End
 
 .cornernarrow3:	spriteHeader
-	spritePiece	0, -8, 1, 2, $13, 0, 0, 0, 0
+	spritePiece	0, -$8, 1, 2, $13, 0, 0, 0, 0
 .cornernarrow3_End
 
 .vertwide:	spriteHeader
-	spritePiece	-8, -$10, 2, 4, $15, 0, 0, 0, 0
+	spritePiece	-$8, -$10, 2, 4, $15, 0, 0, 0, 0
 .vertwide_End
 
 .diagonal:	spriteHeader
-	spritePiece	-$A, -8, 4, 1, $1D, 0, 0, 0, 0
+	spritePiece	-$A, -$8, 4, 1, $1D, 0, 0, 0, 0
 	spritePiece	-$18, 0, 4, 1, $21, 0, 0, 0, 0
 .diagonal_End
 
