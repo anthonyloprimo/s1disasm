@@ -353,7 +353,7 @@ v_lives:		ds.b	1				; number of lives
 v_air:			ds.w	1				; air remaining while underwater
 v_airbyte:		equ	v_air+1				; low byte for air
 v_lastspecial:		ds.b	1				; last special stage number
-			ds.b	1				; unused
+v_ss_emeralds_before:	ds.b	1				; emerald count on entering the current Special Stage
 v_continues:		ds.b	1				; number of continues
 			ds.b	1				; unused
 f_timeover:		ds.b	1				; time over flag

@@ -2155,15 +2155,37 @@ Tit_CountC:
 ; loc_3230:
 Tit_ChkStartOrDemo:
 		tst.w	(v_generictimer).w		; has title screen timer expired?
-		beq.w	GotoDemo			; if yes, launch Demo mode
+		beq.w	Tit_MainLoop			; keep waiting: normal-game demos are disabled for this hack
 		andi.b	#btnStart,(v_jpadpress1).w	; check if Start is pressed
 		beq.w	Tit_MainLoop			; if not, continue looping title screen
+		bra.w	CursedStartSpecial		; this hack consists only of the Special Stages
 
 Tit_ChkLevSel:
 		tst.b	(f_levselcheat).w		; check if level select code is on
 		beq.w	PlayLevel			; if not, begin game by playing normal level
 		btst	#bitA,(v_jpadhold1).w		; check if A was held while pressing Start
 		beq.w	PlayLevel			; if not, begin game by playing normal level
+; ---------------------------------------------------------------------------
+
+; Start a fresh, Special-Stage-only run.  This is reached from the fully
+; initialized title screen, so none of the console/video setup is bypassed.
+CursedStartSpecial:
+		move.b	#id_Special,(v_gamemode).w	; enter the first Special Stage
+		clr.w	(v_zone_act).w
+		move.b	#3,(v_lives).w
+		moveq	#0,d0
+		move.w	d0,(v_rings).w
+		move.l	d0,(v_time).w
+		move.l	d0,(v_score).w
+		move.b	d0,(v_lastspecial).w		; begin with Special Stage 1
+		move.b	d0,(v_emeralds).w
+		move.l	d0,(v_emldlist).w
+		move.l	d0,(v_emldlist+4).w
+		move.b	d0,(v_continues).w
+		move.b	#bgm_Fade,d0
+		bsr.w	QueueSound2
+		rts
+
 ; ---------------------------------------------------------------------------
 
 Tit_EnterLevelSelect:
@@ -3249,6 +3271,7 @@ GM_Special:	; white fade-out from previous game mode
 		clr.w	(f_restart).w			; clear level restart flag
 		moveq	#palid_Special,d0		; load special stage palette...
 		bsr.w	PalLoad_Fade			; ...into the palette fade-in buffer
+		move.b	(v_emeralds).w,(v_ss_emeralds_before).w ; remember whether this attempt earns one
 		jsr	(SS_Load).l			; load SS layout data (based on last stage entered and collected emeralds)
 
 	if FixBugs
@@ -3369,15 +3392,21 @@ SS_FinLoop_NoBrighten:
 		move.w	#$9001,(a6)			; 64-cell hscroll size
 		bsr.w	ClearScreen			; wipe screen
 
-		locVRAM	ArtTile_Title_Card*tile_size	; set VRAM location for title card font
-		lea	(Nem_TitleCard).l,a0		; load title card patterns
-		bsr.w	NemDec				; decompress Nemesis-compressed graphics directly to VRAM
-
-		jsr	(Hud_Base).l			; load basic HUD graphics
+		locVRAM	ArtTile_Level_Select_Font*tile_size ; load the system/level-select font
+		lea	(Art_Text).l,a5
+		move.w	#(Art_Text_end-Art_Text)/2-1,d1
+.LoadPromptFont:
+		move.w	(a5)+,(vdp_data_port).l
+		dbf	d1,.LoadPromptFont
 		enable_ints				; enable interrupts
 
 		moveq	#palid_SSResult,d0		; load Special Stage results screen palette...
 		bsr.w	PalLoad				; ...directly to active palette
+		clr.w	(v_palette_line_2+$A).w		; font shade 1 (index 5): black
+		clr.w	(v_palette_line_2+$C).w		; font shade 2 (index 6): black
+		clr.w	(v_palette_line_2+$E).w		; font shade 3 (index 7): black
+		clearRAM v_objspace			; remove the Special Stage objects
+		bra.w	SS_DrawCursedResult		; replace the normal tally/results card
 		moveq	#plcid_Main,d0			; load main patterns (rings, etc.) 
 		bsr.w	NewPLC				; add to new PLC queue
 		moveq	#plcid_SSResult,d0		; load Special Stage results screen patterns
@@ -3415,6 +3444,94 @@ SS_NormalExit:	; Special Stage results screen loop
 		bsr.w	QueueSound2 			; play it
 		bsr.w	PaletteWhiteOut			; fade-out to white
 		rts					; return to MainGameLoop
+; ===========================================================================
+
+SS_DrawCursedResult:
+		lea	(vdp_data_port).l,a6
+		move.w	#ArtTile_Level_Select_Font|Tile_Pal2|Tile_Prio,d3 ; black on white
+
+		cmpi.b	#ss_emeralds_num,(v_emeralds).w
+		beq.s	.Winner
+		bsr.w	SS_DidGetEmerald
+		beq.s	.Next
+		lea	(SS_CursedMissed).l,a1
+		moveq	#6-1,d1
+		locVRAM	vram_bg+(10<<7)+(17<<1),d4
+		move.l	d4,4(a6)
+		bsr.s	.DrawText
+		lea	(SS_CursedRetry).l,a1
+		moveq	#24-1,d1
+		locVRAM	vram_bg+(14<<7)+(8<<1),d4
+		bra.s	.DrawPrompt
+.Next:
+		lea	(SS_CursedSuccess).l,a1
+		moveq	#7-1,d1
+		locVRAM	vram_bg+(10<<7)+(16<<1),d4
+		move.l	d4,4(a6)
+		bsr.s	.DrawText
+		lea	(SS_CursedNext).l,a1
+		moveq	#28-1,d1
+		locVRAM	vram_bg+(14<<7)+(6<<1),d4
+		bra.s	.DrawPrompt
+.Winner:
+		lea	(SS_CursedWinner).l,a1
+		moveq	#13-1,d1
+		locVRAM	vram_bg+(14<<7)+(13<<1),d4
+.DrawPrompt:
+		move.l	d4,4(a6)
+		bsr.s	.DrawText
+		bra.w	SS_CursedResultLoop
+.DrawText:
+		moveq	#0,d0
+		move.b	(a1)+,d0
+		add.w	d3,d0
+		move.w	d0,(a6)
+		dbf	d1,.DrawText
+		rts
+
+SS_CursedResultLoop:
+		move.b	#id_VBlank_Title,(v_vblank_routine).w
+		bsr.w	WaitForVBlank
+		cmpi.b	#ss_emeralds_num,(v_emeralds).w
+		beq.s	SS_CursedResultLoop		; the winner screen is final
+		andi.b	#btnStart,(v_jpadpress1).w
+		beq.s	SS_CursedResultLoop
+
+		bsr.w	SS_DidGetEmerald
+		beq.s	SS_PlayNextCursedStage
+		subq.b	#1,(v_lastspecial).w		; failure: choose this stage again
+		bpl.s	SS_PlayNextCursedStage
+		move.b	#ss_emeralds_num-1,(v_lastspecial).w ; wrap stage 6 to itself
+SS_PlayNextCursedStage:
+		move.b	#id_Special,(v_gamemode).w
+		rts
+
+; Returns Z when the emerald count increased during the stage just played.
+SS_DidGetEmerald:
+		move.b	(v_emeralds).w,d0
+		cmp.b	(v_ss_emeralds_before).w,d0
+		beq.s	.NoEmerald
+		moveq	#0,d0				; force Z when this attempt succeeded
+		rts
+.NoEmerald:
+		moveq	#1,d0				; force NZ when the count did not change
+		rts
+
+	charset ' ', $FF
+	charset '0','9',$00
+	charset '$', $0A
+	charset '-', $0B
+	charset '=', $0C
+	charset '>', $0D
+	charset 'Y','Z',$0F
+	charset 'A','X',$11
+SS_CursedMissed:	dc.b "MISSED"
+SS_CursedSuccess:	dc.b "SUCCESS"
+SS_CursedRetry:	dc.b "PRESS START TO TRY AGAIN"
+SS_CursedNext:	dc.b "PRESS START FOR NEXT EMERALD"
+SS_CursedWinner:	dc.b "A WINNER IS YOU"
+	charset
+	even
 ; ===========================================================================
 
 SS_ToSegaScreen:
