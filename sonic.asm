@@ -1957,7 +1957,7 @@ GM_Title:	; fading out from previous game mode
 		lea	(vdp_data_port).l,a6		; load VDP data transfer port
 		locVRAM	ArtTile_Level_Select_Font*tile_size,4(a6) ; set target VRAM location for level select font
 		lea	(Art_Text).l,a5			; load uncompressed level select font
-		move.w	#(Art_Text_end-Art_Text)/2-1,d1	; set loop count for level select 
+		move.w	#(Art_Text_end-Art_Text)/2-1,d1	; set loop count for level select
 Tit_LoadText:
 		move.w	(a5)+,(a6)			; write one row of the level select font to VRAM
 		dbf	d1,Tit_LoadText			; loop until it's fully loaded
@@ -1990,10 +1990,7 @@ Tit_LoadText:
 
 		lea	(vdp_control_port).l,a5		; set VDP control port
 		lea	(vdp_data_port).l,a6		; set VDP data port
-		lea	(v_bgscreenposx).w,a3		; get current background X position
-		lea	(v_lvllayout_bg).w,a4		; get location in level layout RAM where background is stored
-		move.w	#$4000+(vram_bg-vram_fg),d2	; =$6000 (VRAM write command $4000 + nametable start address relative to vram_fg)
-		bsr.w	DrawChunks			; draw initial background layer
+		; Leave the background plane cleared for a solid dark-blue backdrop.
 
 		lea	(v_ram_start).l,a1		; set start of RAM to be used as decompression buffer (this overwrites unused chunk RAM)
 		lea	(Eni_Title).l,a0		; load title screen emblem mappings
@@ -2006,28 +2003,35 @@ Tit_LoadText:
 	else
 		copyTilemap	v_ram_start,vram_fg+$206,34,22 ; transfer decompressed patterns from RAM buffer to VRAM (off-center)
 	endif
-
-		locVRAM	ArtTile_Level*tile_size		; set target VRAM location for level patterns
-		lea	(Nem_GHZ_1st).l,a0		; load first half of GHZ patterns
-		bsr.w	NemDec				; decompress Nemesis-compressed patterns directly to VRAM
+		; ROM version, bottom-right. Tile $0E is the user-supplied period.
+		lea	(TitleVersionText).l,a1
+		moveq	#5-1,d1
+		move.w	#ArtTile_Level_Select_Font|Tile_Pal1|Tile_Prio,d3
+		locVRAM	vram_fg+(27<<7)+(35<<1),4(a6)
+.DrawVersion:
+		moveq	#0,d0
+		move.b	(a1)+,d0
+		cmpi.b	#$FF,d0
+		beq.s	.VersionBlank
+		add.w	d3,d0
+		bra.s	.VersionWrite
+.VersionBlank:
+		moveq	#0,d0
+.VersionWrite:
+		move.w	d0,(a6)
+		dbf	d1,.DrawVersion
 
 		moveq	#palid_Title,d0			; load title screen palette...
 		bsr.w	PalLoad_Fade			; ...to fade-in buffer
 		move.b	#bgm_Title,d0			; set title screen music
 		bsr.w	QueueSound2			; play title screen music
 		move.b	#0,(f_debugmode).w		; disable debug mode (cheat remains active though)
-		move.w	#376,(v_generictimer).w		; run title screen for 376 frames (6 seconds plus some change)
+		clr.w	(v_generictimer).w		; no attract-mode deadline; wait for Start indefinitely
 		
-	if FixBugs
-		; Fix the Press Start Button text
-		; https://info.sonicretro.org/SCHG_How-to:Display_the_Press_Start_Button_text
-		clearRAM v_sonicteam,v_sonicteam+object_size ; delete RAM used by "SONIC TEAM PRESENTS" object (fully)
-	else
-		; Bug: this only clears half of the "SONIC TEAM PRESENTS" slot.
-		; This is responsible for why the "PRESS START BUTTON" text doesn't
-		; show up, as the routine ID isn't reset.
-		clearRAM v_sonicteam,v_sonicteam+object_size/2 ; delete RAM used by "SONIC TEAM PRESENTS" object (partially)
-	endif
+		; Fully clear the old "SONIC TEAM PRESENTS" slot so the overlapping
+		; "PRESS START BUTTON" object always begins at routine 0. The original
+		; release only cleared half the slot, unintentionally hiding this text.
+		clearRAM v_sonicteam,v_sonicteam+object_size
 
 		move.b	#id_TitleSonic,(v_titlesonic).w	; load big Sonic object
 		move.b	#id_PSBTM,(v_pressstart).w	; load "PRESS START BUTTON" object
@@ -2045,7 +2049,8 @@ Tit_LoadText:
 		move.b	#2,(v_ttlsonichide+obFrame).w	; load object which hides part of Sonic's torso behind the emblem
 
 		jsr	(ExecuteObjects).l		; load title screen objects
-		bsr.w	DeformLayers			; initialize background deformation before fade-in
+		clearRAM v_hscrolltablebuffer		; fixed solid background: no GHZ deformation
+		clr.l	(v_scrposy_vdp).w
 		jsr	(BuildSprites).l		; build sprites for the title screen objects before fade-in
 		moveq	#plcid_Main,d0			; load main patterns (rings, etc.) 
 		bsr.w	NewPLC				; (these get loaded once for the title screen and then never again, except when exiting Special Stages)
@@ -2066,21 +2071,9 @@ Tit_MainLoop:
 		move.b	#id_VBlank_Title,(v_vblank_routine).w ; set VBlank routine to $04
 		bsr.w	WaitForVBlank			; wait for VBlank to finish
 		jsr	(ExecuteObjects).l		; execute title screen objects
-		bsr.w	DeformLayers			; run background deformation
 		jsr	(BuildSprites).l		; display sprites
 		bsr.w	PalCycle_Title			; run title screen palette cycle
 		bsr.w	RunPLC				; run any potential PLC
-
-		move.w	(v_player+obX).w,d0		; get current title screen position (big Sonic object)
-		addq.w	#2,d0				; move it 2px to the right
-		move.w	d0,(v_player+obX).w		; write new X position
-		cmpi.w	#$1C00,d0			; has Sonic object passed $1C00 on x-axis?
-		blo.s	Tit_ChkRegion			; if not, branch
-		; Will never happen due to the short title screen generic timer.
-		; This likely was an old failsafe before Demos were introduced.
-		move.b	#id_Sega,(v_gamemode).w		; return to Sega screen
-		rts
-; ===========================================================================
 
 Tit_ChkRegion:
 		tst.b	(v_megadrive).w			; check if the machine is US or Japanese
@@ -2154,8 +2147,6 @@ Tit_CountC:
 
 ; loc_3230:
 Tit_ChkStartOrDemo:
-		tst.w	(v_generictimer).w		; has title screen timer expired?
-		beq.w	Tit_MainLoop			; keep waiting: normal-game demos are disabled for this hack
 		andi.b	#btnStart,(v_jpadpress1).w	; check if Start is pressed
 		beq.w	Tit_MainLoop			; if not, continue looping title screen
 		bra.w	CursedStartSpecial		; this hack consists only of the Special Stages
@@ -2182,6 +2173,8 @@ CursedStartSpecial:
 		move.l	d0,(v_emldlist).w
 		move.l	d0,(v_emldlist+4).w
 		move.b	d0,(v_continues).w
+		move.b	d0,(v_ss_misses).w
+		move.b	d0,(v_ss_retrying).w
 		move.b	#bgm_Fade,d0
 		bsr.w	QueueSound2
 		rts
@@ -2355,6 +2348,10 @@ LevSel_Ptrs:
 		dc.w id_SS<<8		; Special Stage (dummy value)
 		dc.w $8000		; Sound Test
 LevSel_PtrsEnd:	even
+
+TitleVersionText:
+		dc.b	$26,$FF,$00,$0E,$05		; "V 0.5"
+		even
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -3241,8 +3238,11 @@ Demo_SS:	include	"demodata/Intro - Special Stage.asm"
 
 ; SpecialStage:
 GM_Special:	; white fade-out from previous game mode
+		tst.b	(v_ss_retrying).w		; preserve audio when retrying a failed stage
+		bne.s	.SkipEntrySound
 		move.w	#sfx_EnterSS,d0			; set special stage entry sound
 		bsr.w	QueueSound2			; play it
+.SkipEntrySound:
 		bsr.w	PaletteWhiteOut			; fade-out to white
 ; ---------------------------------------------------------------------------
 
@@ -3289,8 +3289,12 @@ GM_Special:	; white fade-out from previous game mode
 		bsr.w	PalCycle_SS			; initialize palette cycle and background for fade-in
 		clr.w	(v_ssangle).w			; set stage angle to "upright"
 		move.w	#ss_rotatespeed,(v_ssrotate).w	; set initial stage rotation speed ($40, see object 09)
+		tst.b	(v_ss_retrying).w		; only failed-stage retries keep the current track position
+		bne.s	SS_MusicAlreadyPlaying
 		move.w	#bgm_SS,d0			; play special stage BG music
 		bsr.w	QueueSound1			; play it
+SS_MusicAlreadyPlaying:
+		clr.b	(v_ss_retrying).w		; the retry transition has now been consumed
 
 		move.w	#0,(v_btnpushtime1).w		; clear button push counters for demos
 		lea	(DemoDataPtr).l,a1		; load demo data
@@ -3321,6 +3325,8 @@ SS_NoDebug:
 
 SS_MainLoop:
 		bsr.w	PauseGame			; handle pausing the game when pressing start
+		tst.w	(f_restart).w			; did the pause menu request a restart?
+		bne.w	SS_RestartFromPause
 		move.b	#id_VBlank_SpecialStage,(v_vblank_routine).w ; set VBlank routine to $0A
 		bsr.w	WaitForVBlank			; wait until VBlank has finished
 		bsr.w	MoveSonicInDemo			; simulate controls in demos (immediately returns outside demos)
@@ -3406,6 +3412,12 @@ SS_FinLoop_NoBrighten:
 		clr.w	(v_palette_line_2+$C).w		; font shade 2 (index 6): black
 		clr.w	(v_palette_line_2+$E).w		; font shade 3 (index 7): black
 		clearRAM v_objspace			; remove the Special Stage objects
+		bsr.w	SS_DidGetEmerald
+		beq.s	SS_MissCountDone		; successful attempts do not add a miss
+		cmpi.b	#99,(v_ss_misses).w		; keep the two-digit display representable
+		bhs.s	SS_MissCountDone
+		addq.b	#1,(v_ss_misses).w
+SS_MissCountDone:
 		bra.w	SS_DrawCursedResult		; replace the normal tally/results card
 		moveq	#plcid_Main,d0			; load main patterns (rings, etc.) 
 		bsr.w	NewPLC				; add to new PLC queue
@@ -3450,6 +3462,40 @@ SS_DrawCursedResult:
 		lea	(vdp_data_port).l,a6
 		move.w	#ArtTile_Level_Select_Font|Tile_Pal2|Tile_Prio,d3 ; black on white
 
+		; Current emerald total in the top-left corner.
+		lea	(SS_CursedEmeralds).l,a1
+		moveq	#9-1,d1
+		locVRAM	vram_bg+(1<<7)+(1<<1),d4
+		move.l	d4,4(a6)
+		bsr.w	.DrawText
+		moveq	#0,d0
+		move.b	(v_emeralds).w,d0
+		add.w	d3,d0
+		move.w	d0,(a6)
+
+		; Total misses in the top-right corner, matching the pause menu.
+		lea	(SS_CursedMisses).l,a1
+		moveq	#7-1,d1
+		locVRAM	vram_bg+(1<<7)+(30<<1),d4
+		move.l	d4,4(a6)
+		bsr.w	.DrawText
+		moveq	#0,d0
+		move.b	(v_ss_misses).w,d0
+		divu.w	#10,d0
+		move.w	d0,d2				; quotient is the tens digit
+		add.w	d3,d2
+		move.w	d2,(a6)
+		swap	d0					; remainder is the ones digit
+		add.w	d3,d0
+		move.w	d0,(a6)
+
+		; ROM version, bottom-right, on every result variant.
+		lea	(SS_CursedVersion).l,a1
+		moveq	#5-1,d1
+		locVRAM	vram_bg+(27<<7)+(35<<1),d4
+		move.l	d4,4(a6)
+		bsr.w	.DrawText
+
 		cmpi.b	#ss_emeralds_num,(v_emeralds).w
 		beq.s	.Winner
 		bsr.w	SS_DidGetEmerald
@@ -3458,7 +3504,7 @@ SS_DrawCursedResult:
 		moveq	#6-1,d1
 		locVRAM	vram_bg+(10<<7)+(17<<1),d4
 		move.l	d4,4(a6)
-		bsr.s	.DrawText
+		bsr.w	.DrawText
 		lea	(SS_CursedRetry).l,a1
 		moveq	#24-1,d1
 		locVRAM	vram_bg+(14<<7)+(8<<1),d4
@@ -3468,7 +3514,7 @@ SS_DrawCursedResult:
 		moveq	#7-1,d1
 		locVRAM	vram_bg+(10<<7)+(16<<1),d4
 		move.l	d4,4(a6)
-		bsr.s	.DrawText
+		bsr.w	.DrawText
 		lea	(SS_CursedNext).l,a1
 		moveq	#28-1,d1
 		locVRAM	vram_bg+(14<<7)+(6<<1),d4
@@ -3479,12 +3525,18 @@ SS_DrawCursedResult:
 		locVRAM	vram_bg+(14<<7)+(13<<1),d4
 .DrawPrompt:
 		move.l	d4,4(a6)
-		bsr.s	.DrawText
+		bsr.w	.DrawText
 		bra.w	SS_CursedResultLoop
 .DrawText:
 		moveq	#0,d0
 		move.b	(a1)+,d0
+		cmpi.b	#$FF,d0
+		beq.s	.DrawBlank
 		add.w	d3,d0
+		bra.s	.DrawCharacter
+.DrawBlank:
+		moveq	#0,d0
+.DrawCharacter:
 		move.w	d0,(a6)
 		dbf	d1,.DrawText
 		rts
@@ -3499,6 +3551,7 @@ SS_CursedResultLoop:
 
 		bsr.w	SS_DidGetEmerald
 		beq.s	SS_PlayNextCursedStage
+		move.b	#1,(v_ss_retrying).w		; failure: preserve music while reloading
 		subq.b	#1,(v_lastspecial).w		; failure: choose this stage again
 		bpl.s	SS_PlayNextCursedStage
 		move.b	#ss_emeralds_num-1,(v_lastspecial).w ; wrap stage 6 to itself
@@ -3523,6 +3576,7 @@ SS_DidGetEmerald:
 	charset '-', $0B
 	charset '=', $0C
 	charset '>', $0D
+	charset '.', $0E
 	charset 'Y','Z',$0F
 	charset 'A','X',$11
 SS_CursedMissed:	dc.b "MISSED"
@@ -3530,8 +3584,15 @@ SS_CursedSuccess:	dc.b "SUCCESS"
 SS_CursedRetry:	dc.b "PRESS START TO TRY AGAIN"
 SS_CursedNext:	dc.b "PRESS START FOR NEXT EMERALD"
 SS_CursedWinner:	dc.b "A WINNER IS YOU"
+SS_CursedEmeralds:	dc.b "EMERALDS "
+SS_CursedMisses:	dc.b "MISSES "
+SS_CursedVersion:	dc.b "V 0.5"
 	charset
 	even
+; ===========================================================================
+
+SS_RestartFromPause:
+		rts					; restart directly, without entering the results flow
 ; ===========================================================================
 
 SS_ToSegaScreen:

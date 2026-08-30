@@ -115,7 +115,7 @@ v_jpadhold2:		ds.b	1				; joypad input - held, duplicate
 v_jpadpress2:		ds.b	1				; joypad input - pressed, duplicate
 v_jpadhold1:		ds.b	1				; joypad input - held
 v_jpadpress1:		ds.b	1				; joypad input - pressed
-			ds.b	6				; unused
+			ds.b	6				; unused (first two bytes receive controller 2 input)
 v_vdp_buffer1:		ds.w	1				; VDP instruction buffer of register $81 (used for enabling/disabling display)
 			ds.b	6				; unused
 v_generictimer:		ds.w	1				; generic timer, decrements to 0 in VBlank (word)
@@ -349,13 +349,13 @@ v_zone:			ds.b	1				; current zone number
 v_act:			ds.b	1				; current act number
 v_zone_act:		equ	v_zone				; when v_zone is read as word
 v_lives:		ds.b	1				; number of lives
-			ds.b	1				; unused
+v_ss_retrying:		ds.b	1				; nonzero when reloading a failed Special Stage
 v_air:			ds.w	1				; air remaining while underwater
 v_airbyte:		equ	v_air+1				; low byte for air
 v_lastspecial:		ds.b	1				; last special stage number
 v_ss_emeralds_before:	ds.b	1				; emerald count on entering the current Special Stage
 v_continues:		ds.b	1				; number of continues
-			ds.b	1				; unused
+v_ss_misses:		ds.b	1				; total failed Special Stage attempts (capped at 99)
 f_timeover:		ds.b	1				; time over flag
 v_lifecount:		ds.b	1				; lives counter value (for actual number, see "v_lives")
 f_lifecount:		ds.b	1				; lives counter update flag
@@ -369,7 +369,8 @@ v_timemin:		equ	v_time+1			; time - minutes
 v_timesec:		equ	v_time+2			; time - seconds
 v_timecent:		equ	v_time+3			; time - centiseconds
 v_score:		ds.l	1				; score
-			ds.b	2				; unused
+v_pause_selection:	ds.b	1				; selected entry in the Special Stage pause menu
+			ds.b	1				; unused
 v_shield:		ds.b	1				; shield status (00 = no; 01 = yes)
 v_invinc:		ds.b	1				; invincibility status (00 = no; 01 = yes)
 v_shoes:		ds.b	1				; speed shoes status (00 = no; 01 = yes)

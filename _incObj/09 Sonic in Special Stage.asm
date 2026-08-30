@@ -309,6 +309,7 @@ SonicSS_Jump:
 		move.w	d0,obVelY(a0)				; set result as new Y speed
 
 		bset	#1,obStatus(a0)				; set in-air flag
+		move.b	#1,jumping(a0)				; mark this airborne state as a player jump
 
 		move.w	#sfx_Jump,d0				; set jump sound
 		jsr	(QueueSound2).l				; play jumping sound
@@ -321,24 +322,48 @@ SonicSS_NoJump:
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Unused subroutine to limit Sonic's upward vertical speed depending on
-; how long the jump button was held after the initial jump. This likely got
-; removed as it doesn't work (it doesn't account for the stage rotation).
+; Limit Sonic's speed away from the current floor depending on how long the
+; jump button is held. Unlike the abandoned original code, this projects the
+; velocity onto the Special Stage's rotated outward normal, caps only that
+; component, and preserves sideways momentum.
 ; ---------------------------------------------------------------------------
 
 ; nullsub_2:
 SonicSS_JumpHeight_Unused:
-		rts						; immediately return
-; ---------------------------------------------------------------------------
-
-		; dead code
-		move.w	#-$400,d1				; set maximum jump speed
-		cmp.w	obVelY(a0),d1				; is Sonic already below the cap?
-		ble.s	.return					; if yes, branch
+		tst.b	jumping(a0)				; was this airborne state caused by jumping?
+		beq.s	.return					; if not, do not shorten falls or bumper launches
 		move.b	(v_jpadhold2).w,d0			; get held buttons
 		andi.b	#btnABC,d0				; is A, B, or C being held?
 		bne.s	.return					; if yes, branch
-		move.w	d1,obVelY(a0)				; cap vertical speed if not holding ABC
+
+		; Recreate the outward unit vector used by SonicSS_Jump.
+		move.b	(v_ssangle).w,d0
+		andi.b	#$FC,d0
+		neg.b	d0
+		subi.b	#$40,d0
+		jsr	(CalcSine).l				; d0 = outward Y, d1 = outward X (8.8)
+		move.w	d0,d4					; preserve outward Y
+		move.w	d1,d5					; preserve outward X
+
+		; dot(velocity, outward normal) gives speed away from the surface.
+		move.w	obVelX(a0),d2
+		muls.w	d5,d2
+		move.w	obVelY(a0),d3
+		muls.w	d4,d3
+		add.l	d3,d2
+		asr.l	#8,d2
+		cmpi.w	#$400,d2				; already at or below short-jump speed?
+		ble.s	.return
+
+		; Remove only the excess outward component, retaining tangential speed.
+		subi.w	#$400,d2
+		move.w	d2,d6
+		muls.w	d6,d5
+		asr.l	#8,d5
+		sub.w	d5,obVelX(a0)
+		muls.w	d6,d4
+		asr.l	#8,d4
+		sub.w	d4,obVelY(a0)
 
 ; locret_1BBB4:
 .return:
@@ -464,6 +489,7 @@ SonicSS_Fall:
 		moveq	#0,d0					; clear d0
 		move.w	d0,obVelX(a0)				; stop Sonic's horizonal momentum
 		bclr	#1,obStatus(a0)				; clear in-air flag
+		clr.b	jumping(a0)					; variable-height control ends on contact
 
 		add.l	d1,d2					; add new Y delta to target Y position
 		bsr.w	SonicSS_FindWall			; check if the new result would make Sonic clip through a floor wall
@@ -483,6 +509,7 @@ SonicSS_Fall:
 		moveq	#0,d1					; clear d1
 		move.w	d1,obVelY(a0)				; stop Sonic's vertical momentum
 		bclr	#1,obStatus(a0)				; clear in-air flag
+		clr.b	jumping(a0)					; variable-height control ends on contact
 
 ; loc_1BCC6:
 .nofloor:
@@ -806,6 +833,7 @@ SonicSS_ChkBumper:
 		move.w	d0,obVelY(a0)				; set final result to Sonic's Y-speed
 
 		bset	#1,obStatus(a0)				; set in-air flag
+		clr.b	jumping(a0)					; bumper launches are not player jumps
 
 		bsr.w	SS_FindFreeAnimationSlot		; find a free animation slot
 		bne.s	SonicSS_BumpSnd				; if none are free, branch
