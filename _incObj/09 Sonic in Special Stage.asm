@@ -36,6 +36,7 @@ SonicSS_Index:	dc.w SonicSS_Main-SonicSS_Index			; 0 - object init
 		dc.w SonicSS_Control-SonicSS_Index		; 2 - main mode
 		dc.w SonicSS_ExitStage-SonicSS_Index		; 4 - rotate stage while exiting
 		dc.w SonicSS_ExitStage_Unused-SonicSS_Index	; 6 - unreachable secondary exiting state
+		dc.w SonicSS_GoalFade-SonicSS_Index		; 8 - immediate GOAL fade
 ; ===========================================================================
 
 ; Obj09_Main:
@@ -406,6 +407,9 @@ SS_FixCamera:
 ; ---------------------------------------------------------------------------
 
 ; Obj09_ExitStage:
+SonicSS_GoalFade:
+		jmp	(DisplaySprite).l			; no spin acceleration or movement
+
 SonicSS_ExitStage:
 		addi.w	#ss_rotatespeed,(v_ssrotate).w		; increase spin speed during exit sequence
 		cmpi.w	#$60*ss_rotatespeed,(v_ssrotate).w	; is the stage spinning fast enough? ($1800)
@@ -853,9 +857,11 @@ SonicSS_ChkGOAL:
 		cmpi.b	#id_SS_GOAL,d0				; is the item a "GOAL"?
 		bne.s	SonicSS_ChkUP				; if not, branch
 
-		addq.b	#2,obRoutine(a0)			; run routine "SonicSS_ExitStage"
+		move.b	#8,obRoutine(a0)			; freeze the stage during the normal fade
+		move.b	#id_Level,(v_gamemode).w		; begin fading this frame
+		clr.w	(v_ssrotate).w
 
-		move.w	#sfx_SSGoal,d0				; set "GOAL" sound
+		move.w	#sfx_Death,d0				; set "GOAL" sound
 		jsr	(QueueSound2).l				; play it
 		rts						; return
 ; ===========================================================================

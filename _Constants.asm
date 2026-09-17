@@ -613,6 +613,24 @@ ArtTile_SS_Zone_4:		equ $797
 ArtTile_SS_Zone_5:		equ $7A0
 ArtTile_SS_Zone_6:		equ $7A9
 
+; Cursed Special Stage interface. Only visible timer glyphs are uploaded.
+ArtTile_SS_TimerLow: equ $7D4 ; $FA80-$FBFF: first six glyphs (12 tiles)
+ArtTile_SS_TimerHigh: equ $7FC ; $FF80-$FFFF: final two glyphs (4 tiles)
+; Pause temporarily borrows wall patterns; Continue restores Nem_SSWalls.
+ArtTile_SS_PauseFont: equ ArtTile_SS_Wall ; $2840-$2DFF: font/divider/question
+ArtTile_SS_PauseNote: equ ArtTile_SS_PauseFont+46 ; $2E00-$2FFF: 16 tiles
+ArtTile_SS_PausePanel: equ ArtTile_SS_PauseNote+16 ; $3000-$31FF: 16 tiles
+
+	if ArtTile_SS_TimerLow*tile_size<vram_sprites+sprites_max*spritetable_entrysize
+		fatal "Special Stage timer overlaps sprite DMA destination"
+	endif
+	if (ArtTile_SS_TimerLow+12)*tile_size>vram_hscroll
+		fatal "Special Stage timer overlaps horizontal scroll table"
+	endif
+	if (ArtTile_SS_TimerHigh+4)*tile_size>$10000
+		fatal "Special Stage timer exceeds VRAM"
+	endif
+
 ; Special Stage Results
 ArtTile_SS_Results_Emeralds:	equ $541
 

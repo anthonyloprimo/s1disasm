@@ -156,6 +156,7 @@ CursedPauseMenu:
 		move.b	d0,(v_emeralds).w
 		move.l	d0,(v_emldlist).w
 		move.l	d0,(v_emldlist+4).w
+		move.l	d0,(v_time).w			; new run resets total gameplay time
 		move.b	d0,(v_ss_misses).w
 		move.b	d0,(v_ss_retrying).w
 		move.w	#1,(f_restart).w
@@ -237,7 +238,7 @@ CursedPauseDivider:		dc.b "----------"
 CursedPauseMissNote:		dc.b "COUNTS AS A MISS"
 CursedPauseEmeraldCount:	dc.b "EMERALDS "
 CursedPauseMissCount:		dc.b "MISSES "
-CursedPauseVersion:		dc.b "V 0.5"
+CursedPauseVersion:		dc.b "V 0.6"
 	charset
 	even
 CursedPauseStarArt:
@@ -250,33 +251,41 @@ CursedPauseDividerArt:
 	endr
 
 ; ---------------------------------------------------------------------------
-; Sprite-based replacement. This leaves all live Special Stage tilemaps and
-; decompression RAM untouched, so Continue can resume the exact same frame.
+; Sprite-based pause screen. Background maps stay intact. Wall patterns are
+; borrowed while stage sprites are hidden, then restored before Continue.
 ; ---------------------------------------------------------------------------
 CursedPauseMenuSprites:
 		move.w	#1,(f_pause).w
 		move.b	#1,(v_snddriver_ram.f_pausemusic).w
 		clr.b	(v_pause_selection).w
+		clr.b	(v_pause_confirm).w
+		bsr.w	SS_HideSpritesForArtSwap
 		disable_ints
-		locVRAM	ArtTile_Level_Select_Font*tile_size
+		locVRAM	ArtTile_SS_PauseFont*tile_size
 		lea	(Art_Text).l,a5
 		move.w	#(Art_Text_end-Art_Text)/2-1,d1
-.loadSafeFont:
+.loadPauseFont:
 		move.w	(a5)+,(vdp_data_port).l
-		dbf	d1,.loadSafeFont
-		locVRAM	(ArtTile_Level_Select_Font+41)*tile_size
+		dbf	d1,.loadPauseFont
+		locVRAM	(ArtTile_SS_PauseFont+41)*tile_size
 		lea	(CursedPauseDividerArt).l,a5
 		move.w	#(4*tile_size)/2-1,d1
 .loadDivider:
 		move.w	(a5)+,(vdp_data_port).l
 		dbf	d1,.loadDivider
 		enable_ints
+		bsr.w	SS_LoadConfirmationArt
+		bsr.w	CursedPauseLoadNote
 		bsr.w	CursedPauseDarkenPalette
+		bsr.w	SS_LoadPauseTimerArt
 		bsr.w	CursedPauseBuildSprites
 .spriteLoop:
+		bsr.w	CursedPauseBuildSprites
 		move.b	#id_VBlank_Paused,(v_vblank_routine).w
 		bsr.w	WaitForVBlank
 		move.b	(v_jpadpress1).w,d0
+		tst.b	(v_pause_confirm).w
+		bne.w	.confirmInput
 		btst	#bitUp,d0
 		beq.s	.spriteDown
 		subq.b	#1,(v_pause_selection).w
@@ -302,6 +311,8 @@ CursedPauseMenuSprites:
 		beq.s	.spriteRestartStage
 		bra.s	.spriteRestartGame
 .spriteContinue:
+		bsr.w	SS_RestorePauseWallArt
+		bsr.w	SS_LoadTimerArt
 		bsr.w	CursedPauseRestorePalette
 		move.b	#$80,(v_snddriver_ram.f_pausemusic).w
 		clr.w	(f_pause).w
@@ -322,34 +333,41 @@ CursedPauseMenuSprites:
 		clr.w	(f_pause).w
 		rts
 .spriteRestartGame:
-		moveq	#0,d0
-		move.b	d0,(v_lastspecial).w
-		move.b	d0,(v_emeralds).w
-		move.l	d0,(v_emldlist).w
-		move.l	d0,(v_emldlist+4).w
-		move.b	d0,(v_ss_misses).w
-		move.b	d0,(v_ss_retrying).w
+		move.b	#1,(v_pause_confirm).w ; open confirmation with No selected
+		bra.w	.spriteLoop
+.confirmInput:
+		btst	#bitB,d0
+		bne.s	.cancelRestart
+		move.b	d0,d1
+		andi.b	#btnUp|btnDn|btnL|btnR,d1
+		beq.s	.confirmAction
+		eori.b	#3,(v_pause_confirm).w ; toggle No/Yes
+		bra.w	.spriteLoop
+.confirmAction:
+		andi.b	#btnStart|btnA,d0
+		beq.w	.spriteLoop
+		cmpi.b	#2,(v_pause_confirm).w
+		bne.s	.cancelRestart
 		bsr.w	CursedPauseRestorePalette
-		move.w	#1,(f_restart).w
 		move.b	#$80,(v_snddriver_ram.f_pausemusic).w
 		clr.w	(f_pause).w
+		clr.b	(v_pause_confirm).w
+		move.w	#1,(f_restart).w ; exit the SS loop immediately after PauseGame
+		move.b	#id_Title,(v_gamemode).w
 		rts
+.cancelRestart:
+		clr.b	(v_pause_confirm).w
+		bra.w	.spriteLoop
 
 CursedPauseBuildSprites:
 		clearRAM v_spritetablebuffer,v_spritetablebuffer_end
 		lea	(v_spritetablebuffer).w,a2
 		moveq	#0,d5
-		move.w	#ArtTile_Level_Select_Font|Tile_Pal1|Tile_Prio,d6
+		bsr.w	SS_DrawStoppedTimer
+		move.w	#ArtTile_SS_PauseFont|Tile_Pal1|Tile_Prio,d6
 
-		; Live counters along the top edge.
-		lea	(CursedPauseEmeraldCount).l,a1
-		moveq	#9-1,d1
-		move.w	#128+16,d2
-		move.w	#128+8,d3
-		bsr.w	CursedPauseAddLine
-		moveq	#0,d0
-		move.b	(v_emeralds).w,d0
-		bsr.w	CursedPauseAddGlyph
+		bsr.w	SS_DrawCollectedEmeralds
+		move.w	#ArtTile_SS_PauseFont|Tile_Pal1|Tile_Prio,d6
 		lea	(CursedPauseMissCount).l,a1
 		moveq	#7-1,d1
 		move.w	#128+16,d2
@@ -364,6 +382,9 @@ CursedPauseBuildSprites:
 		move.l	d4,d0
 		swap	d0
 		bsr.w	CursedPauseAddGlyph
+
+		tst.b	(v_pause_confirm).w
+		bne.w	SS_DrawConfirmation
 
 		lea	(CursedPauseText).l,a1
 		moveq	#6-1,d1
@@ -383,7 +404,7 @@ CursedPauseBuildSprites:
 .dividerSizeReady:
 		addq.b	#1,d5
 		move.b	d5,(a2)+
-		move.w	#ArtTile_Level_Select_Font+41|Tile_Pal1|Tile_Prio,(a2)+
+		move.w	#ArtTile_SS_PauseFont+41|Tile_Pal1|Tile_Prio,(a2)+
 		move.w	d3,(a2)+
 		addi.w	#32,d3
 		addq.b	#1,d4
@@ -399,13 +420,11 @@ CursedPauseBuildSprites:
 		move.w	#128+112,d2
 		move.w	#128+108,d3
 		bsr.w	CursedPauseAddLine
-		move.w	#ArtTile_Level_Select_Font|Tile_Pal2|Tile_Prio,d6
-		lea	(CursedPauseMissNote).l,a1
-		moveq	#16-1,d1
+		move.w	#ArtTile_SS_PauseFont|Tile_Pal2|Tile_Prio,d6
 		move.w	#128+120,d2			; immediately below RESTART STAGE
 		move.w	#128+96,d3
-		bsr.w	CursedPauseAddLine
-		move.w	#ArtTile_Level_Select_Font|Tile_Pal1|Tile_Prio,d6
+		bsr.w	CursedPauseDrawNote
+		move.w	#ArtTile_SS_PauseFont|Tile_Pal1|Tile_Prio,d6
 		lea	(CursedPauseRestartGame).l,a1
 		moveq	#12-1,d1
 		move.w	#128+136,d2			; one blank 8px row after the gray note
@@ -431,7 +450,7 @@ CursedPauseBuildSprites:
 		move.b	#0,(a2)+
 		addq.b	#1,d5
 		move.b	d5,(a2)+
-		move.w	#ArtTile_Level_Select_Font+$D|Tile_Pal1|Tile_Prio,d0 ; first arrow glyph
+		move.w	#ArtTile_SS_PauseFont+$D|Tile_Pal1|Tile_Prio,d0 ; first arrow glyph
 		cmpi.w	#128+224,d3
 		bne.s	.arrowReady
 		ori.w	#$800,d0			; horizontally flip the arrow on the right
@@ -503,4 +522,47 @@ CursedPauseRestorePalette:
 .restoreColor:
 		move.w	(a0)+,(a1)+
 		dbf	d7,.restoreColor
+		rts
+
+; Same note and position, packed into four wide sprites instead of 12 letters.
+CursedPauseLoadNote:
+		disable_ints
+		locVRAM	ArtTile_SS_PauseNote*tile_size
+		lea	(CursedPauseMissNote).l,a1
+		moveq	#16-1,d2 ; four groups of four characters
+.character:
+		moveq	#0,d0
+		move.b	(a1)+,d0
+		cmpi.b	#$FF,d0
+		beq.s	.blank
+		lsl.w	#5,d0
+		lea	(Art_Text).l,a3
+		adda.w	d0,a3
+		moveq	#8-1,d1
+.copy:
+		move.l	(a3)+,(vdp_data_port).l
+		dbf	d1,.copy
+		bra.s	.next
+.blank:
+		moveq	#8-1,d1
+.clear:
+		move.l	#0,(vdp_data_port).l
+		dbf	d1,.clear
+.next:
+		dbf	d2,.character
+		enable_ints
+		rts
+CursedPauseDrawNote:
+		move.w	#ArtTile_SS_PauseNote|Tile_Pal2|Tile_Prio,d0
+		moveq	#4-1,d1
+.piece:
+		move.w	d2,(a2)+
+		move.b	#$C,(a2)+
+		addq.b	#1,d5
+		move.b	d5,(a2)+
+		move.w	d0,(a2)+
+		move.w	d3,(a2)+
+		addq.w	#4,d0
+		addi.w	#32,d3
+		dbf	d1,.piece
 		rts

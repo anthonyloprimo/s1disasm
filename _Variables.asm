@@ -364,13 +364,13 @@ f_timecount:		ds.b	1				; time counter update flag
 f_scorecount:		ds.b	1				; score counter update flag
 v_rings:		ds.w	1				; rings
 v_ringbyte:		equ	v_rings+1			; low byte for rings
-v_time:			ds.l	1				; time
+v_time:			ds.l	1				; normal levels: 00 MM SS FF; Special Stage run: word minutes, SS FF
 v_timemin:		equ	v_time+1			; time - minutes
 v_timesec:		equ	v_time+2			; time - seconds
 v_timecent:		equ	v_time+3			; time - centiseconds
 v_score:		ds.l	1				; score
 v_pause_selection:	ds.b	1				; selected entry in the Special Stage pause menu
-			ds.b	1				; unused
+v_pause_confirm:	ds.b	1				; 0 = closed, 1 = No, 2 = Yes
 v_shield:		ds.b	1				; shield status (00 = no; 01 = yes)
 v_invinc:		ds.b	1				; invincibility status (00 = no; 01 = yes)
 v_shoes:		ds.b	1				; speed shoes status (00 = no; 01 = yes)

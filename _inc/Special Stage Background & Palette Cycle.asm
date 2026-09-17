@@ -124,7 +124,7 @@ PalCycle_SS:
 		moveq	#0,d0
 		move.b	(a0)+,d0				; get palette offset
 		bmi.s	PalCycle_SS_2				; branch if $80+
-		lea	(Pal_SSCyc1).l,a1			; use palette cycle set 1
+		jsr	(SS_GetStageCycle1).l			; use palette cycle set 1
 		adda.w	d0,a1
 		lea	(v_palette_line_3+$E).w,a2
 		move.l	(a1)+,(a2)+
@@ -143,7 +143,7 @@ PalCycle_SS_2:	; usepalcycle2 flag set
 
 	.offset_80_89:
 		mulu.w	#$2A,d1					; d1 = always 0 or $2A
-		lea	(Pal_SSCyc2).l,a1			; use palette cycle set 2
+		jsr	(SS_GetStageCycle2).l			; use palette cycle set 2
 		adda.w	d1,a1
 		andi.w	#$7F,d0					; ignore bit 7
 		bclr	#0,d0					; clear bit 0

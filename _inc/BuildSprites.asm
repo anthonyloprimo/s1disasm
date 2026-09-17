@@ -24,6 +24,10 @@ BuildSprites:
 		lea	(v_spritetablebuffer).w,a2
 		moveq	#0,d5				; d5 will be used as counter for total rendered sprites
 
+		cmpi.b	#id_SonicSpecial,(v_player).w
+		bne.s	.noSSTimer
+		jsr	(SS_DrawTimerSprites).l
+.noSSTimer:
 		lea	(v_spritequeue).w,a4
 		moveq	#spritelayer_num-1,d7
 .priorityLoop:

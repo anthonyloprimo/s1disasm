@@ -885,6 +885,8 @@ VBlank_SpecialStage:
 		writeVRAM	v_hscrolltablebuffer,vram_hscroll ; transfer H-scroll buffer table to actual H-scroll VRAM
 		startZ80				; restart Z80
 
+		bsr.w	SS_UpdateTimerArt		; update only when the displayed second changes
+
 		bsr.w	PalCycle_SS			; advance special stage palette cycle and animate bird/fish graphics
 
 		tst.b	(f_sonframechg).w		; has Sonic's sprite changed?
@@ -981,6 +983,11 @@ VBlank_Continue:
 		writeVRAM	v_spritetablebuffer,vram_sprites  ; transfer sprite buffer table to actual sprites VRAM
 		writeVRAM	v_hscrolltablebuffer,vram_hscroll ; transfer H-scroll buffer table to actual H-scroll VRAM
 		startZ80				; restart Z80
+
+		cmpi.b	#id_SonicSpecial,(v_player).w
+		bne.s	.noSSTimer
+		bsr.w	SS_UpdateTimerArt ; catch a second changing on the last playable frame
+.noSSTimer:
 
 		tst.b	(f_sonframechg).w		; has Sonic's sprite changed?
 		beq.s	.nochg				; if not, branch
@@ -2003,6 +2010,29 @@ Tit_LoadText:
 	else
 		copyTilemap	v_ram_start,vram_fg+$206,34,22 ; transfer decompressed patterns from RAM buffer to VRAM (off-center)
 	endif
+		; System-font author credit, right-aligned above the SEGA copyright.
+		; The title artwork does not contain a complete italic alphabet/digit set.
+		lea	(TitleAuthorText).l,a1
+		moveq	#TitleAuthorText_End-TitleAuthorText-1,d1
+		move.w	#ArtTile_Level_Select_Font|Tile_Pal1|Tile_Prio,d3
+	if FixBugs
+		locVRAM	vram_fg+(24<<7)+(25<<1),4(a6)
+	else
+		locVRAM	vram_fg+(24<<7)+(24<<1),4(a6)
+	endif
+.DrawAuthor:
+		moveq	#0,d0
+		move.b	(a1)+,d0
+		cmpi.b	#$FF,d0
+		beq.s	.AuthorBlank
+		add.w	d3,d0
+		bra.s	.AuthorWrite
+.AuthorBlank:
+		moveq	#0,d0
+.AuthorWrite:
+		move.w	d0,(a6)
+		dbf	d1,.DrawAuthor
+
 		; ROM version, bottom-right. Tile $0E is the user-supplied period.
 		lea	(TitleVersionText).l,a1
 		moveq	#5-1,d1
@@ -2349,8 +2379,14 @@ LevSel_Ptrs:
 		dc.w $8000		; Sound Test
 LevSel_PtrsEnd:	even
 
+; System font tile indices: Y/Z precede A-X, and $FF is a blank.
+TitleAuthorText:
+		dc.b	$19,$1E,$14,$0F,$14,$11,$1B,$1F,$FF,$02,$00,$02,$06 ; "INDYDAKO 2026"
+TitleAuthorText_End:
+		even
+
 TitleVersionText:
-		dc.b	$26,$FF,$00,$0E,$05		; "V 0.5"
+		dc.b	$26,$FF,$00,$0E,$06		; "V 0.6"
 		even
 
 ; ===========================================================================
@@ -3238,6 +3274,7 @@ Demo_SS:	include	"demodata/Intro - Special Stage.asm"
 
 ; SpecialStage:
 GM_Special:	; white fade-out from previous game mode
+		bsr.w	ClearPLC			; discard queued title/level art before SS VRAM setup
 		tst.b	(v_ss_retrying).w		; preserve audio when retrying a failed stage
 		bne.s	.SkipEntrySound
 		move.w	#sfx_EnterSS,d0			; set special stage entry sound
@@ -3269,10 +3306,9 @@ GM_Special:	; white fade-out from previous game mode
 
 		clr.b	(f_wtr_state).w			; clear water state
 		clr.w	(f_restart).w			; clear level restart flag
-		moveq	#palid_Special,d0		; load special stage palette...
-		bsr.w	PalLoad_Fade			; ...into the palette fade-in buffer
 		move.b	(v_emeralds).w,(v_ss_emeralds_before).w ; remember whether this attempt earns one
 		jsr	(SS_Load).l			; load SS layout data (based on last stage entered and collected emeralds)
+		bsr.w	SS_LoadStagePalette		; theme follows the stage actually loaded
 
 	if FixBugs
 		; Set custom level boundaries so that the fixed
@@ -3291,7 +3327,7 @@ GM_Special:	; white fade-out from previous game mode
 		move.w	#ss_rotatespeed,(v_ssrotate).w	; set initial stage rotation speed ($40, see object 09)
 		tst.b	(v_ss_retrying).w		; only failed-stage retries keep the current track position
 		bne.s	SS_MusicAlreadyPlaying
-		move.w	#bgm_SS,d0			; play special stage BG music
+		bsr.w	SS_SelectStageMusic		; select music for the stage actually loaded
 		bsr.w	QueueSound1			; play it
 SS_MusicAlreadyPlaying:
 		clr.b	(v_ss_retrying).w		; the retry transition has now been consumed
@@ -3316,6 +3352,7 @@ SS_MusicAlreadyPlaying:
 		move.b	#1,(f_debugmode).w		; enable debug mode
 
 SS_NoDebug:
+		bsr.w	SS_LoadTimerArt
 		enable_display				; enable screen out-put
 		bsr.w	PaletteWhiteIn			; fade-in from white
 
@@ -3332,6 +3369,7 @@ SS_MainLoop:
 		bsr.w	MoveSonicInDemo			; simulate controls in demos (immediately returns outside demos)
 		move.w	(v_jpadhold1).w,(v_jpadhold2).w	; copy controller 1 inputs to Sonic player object inputs
 
+		bsr.w	SS_TickRunTime			; count only controllable gameplay
 		jsr	(ExecuteObjects).l		; execute Special Stage object
 		jsr	(BuildSprites).l		; build sprites
 		jsr	(SS_ShowLayout).l		; render Special Stage layout
@@ -3459,19 +3497,10 @@ SS_NormalExit:	; Special Stage results screen loop
 ; ===========================================================================
 
 SS_DrawCursedResult:
+		bsr.w	SS_LoadTimerArt
+		bsr.w	SS_LoadResultInterface
 		lea	(vdp_data_port).l,a6
 		move.w	#ArtTile_Level_Select_Font|Tile_Pal2|Tile_Prio,d3 ; black on white
-
-		; Current emerald total in the top-left corner.
-		lea	(SS_CursedEmeralds).l,a1
-		moveq	#9-1,d1
-		locVRAM	vram_bg+(1<<7)+(1<<1),d4
-		move.l	d4,4(a6)
-		bsr.w	.DrawText
-		moveq	#0,d0
-		move.b	(v_emeralds).w,d0
-		add.w	d3,d0
-		move.w	d0,(a6)
 
 		; Total misses in the top-right corner, matching the pause menu.
 		lea	(SS_CursedMisses).l,a1
@@ -3497,7 +3526,7 @@ SS_DrawCursedResult:
 		bsr.w	.DrawText
 
 		cmpi.b	#ss_emeralds_num,(v_emeralds).w
-		beq.s	.Winner
+		beq.w	.Winner
 		bsr.w	SS_DidGetEmerald
 		beq.s	.Next
 		lea	(SS_CursedMissed).l,a1
@@ -3506,7 +3535,7 @@ SS_DrawCursedResult:
 		move.l	d4,4(a6)
 		bsr.w	.DrawText
 		lea	(SS_CursedRetry).l,a1
-		moveq	#24-1,d1
+		moveq	#SS_CursedRetry_End-SS_CursedRetry-1,d1
 		locVRAM	vram_bg+(14<<7)+(8<<1),d4
 		bra.s	.DrawPrompt
 .Next:
@@ -3516,13 +3545,19 @@ SS_DrawCursedResult:
 		move.l	d4,4(a6)
 		bsr.w	.DrawText
 		lea	(SS_CursedNext).l,a1
-		moveq	#28-1,d1
+		moveq	#SS_CursedNext_End-SS_CursedNext-1,d1
 		locVRAM	vram_bg+(14<<7)+(6<<1),d4
 		bra.s	.DrawPrompt
 .Winner:
 		lea	(SS_CursedWinner).l,a1
-		moveq	#13-1,d1
-		locVRAM	vram_bg+(14<<7)+(13<<1),d4
+		moveq	#SS_CursedWinner_End-SS_CursedWinner-1,d1
+		locVRAM	vram_bg+(12<<7)+(13<<1),d4
+		move.l	d4,4(a6)
+		bsr.w	.DrawText
+		bsr.w	SS_DrawTotalTime
+		move.w	#bgm_Credits,d0		; one-shot: all credits channels end with smpsStop
+		bsr.w	QueueSound1
+		bra.w	SS_CursedResultLoop
 .DrawPrompt:
 		move.l	d4,4(a6)
 		bsr.w	.DrawText
@@ -3542,12 +3577,16 @@ SS_DrawCursedResult:
 		rts
 
 SS_CursedResultLoop:
+		bsr.w	SS_ResultTimer
 		move.b	#id_VBlank_Title,(v_vblank_routine).w
 		bsr.w	WaitForVBlank
-		cmpi.b	#ss_emeralds_num,(v_emeralds).w
-		beq.s	SS_CursedResultLoop		; the winner screen is final
 		andi.b	#btnStart,(v_jpadpress1).w
 		beq.s	SS_CursedResultLoop
+		cmpi.b	#ss_emeralds_num,(v_emeralds).w
+		bne.s	.continueRun
+		move.b	#id_Title,(v_gamemode).w ; title entry stops any remaining music
+		rts
+.continueRun:
 
 		bsr.w	SS_DidGetEmerald
 		beq.s	SS_PlayNextCursedStage
@@ -3582,14 +3621,24 @@ SS_DidGetEmerald:
 SS_CursedMissed:	dc.b "MISSED"
 SS_CursedSuccess:	dc.b "SUCCESS"
 SS_CursedRetry:	dc.b "PRESS START TO TRY AGAIN"
+SS_CursedRetry_End:
 SS_CursedNext:	dc.b "PRESS START FOR NEXT EMERALD"
-SS_CursedWinner:	dc.b "A WINNER IS YOU"
+SS_CursedNext_End:
+SS_CursedWinner:	dc.b "YOU",$0A,"RE WINNER" ; minutes glyph doubles as apostrophe
+SS_CursedWinner_End:
+SS_CursedRestart:	dc.b "PRESS START TO RESTART"
+SS_CursedRestart_End:
 SS_CursedEmeralds:	dc.b "EMERALDS "
 SS_CursedMisses:	dc.b "MISSES "
-SS_CursedVersion:	dc.b "V 0.5"
+SS_CursedVersion:	dc.b "V 0.6"
 	charset
 	even
 ; ===========================================================================
+
+		include "_inc/Cursed Run Timer.asm"
+		include "_inc/Special Stage Music.asm"
+		include "_inc/Special Stage Palettes.asm"
+		include "_inc/Cursed Emerald Interface.asm"
 
 SS_RestartFromPause:
 		rts					; restart directly, without entering the results flow

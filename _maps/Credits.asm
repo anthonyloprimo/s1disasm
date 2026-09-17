@@ -256,26 +256,39 @@ Map_Cred_internal:	mappingsTable
 .tryagain_End
 
 
-.sonicteampresents:	spriteHeader	; SONIC TEAM PRESENTS
-	spritePiece	-$4C, -$18, 2, 2, $2E, 0, 0, 0, 0	; S
-	spritePiece	-$3C, -$18, 2, 2, $26, 0, 0, 0, 0	; O
-	spritePiece	-$2C, -$18, 2, 2, $1A, 0, 0, 0, 0	; N
-	spritePiece	-$1C, -$18, 1, 2, $46, 0, 0, 0, 0	; I
-	spritePiece	-$14, -$18, 2, 2, $1E, 0, 0, 0, 0	; C
+.sonicteampresents:	spriteHeader	; SONIC TEAM / AND INDYDAKO / PRESENTS
+	spritePiece	-$4C, -$20, 2, 2, $2E, 0, 0, 0, 0	; S
+	spritePiece	-$3C, -$20, 2, 2, $26, 0, 0, 0, 0	; O
+	spritePiece	-$2C, -$20, 2, 2, $1A, 0, 0, 0, 0	; N
+	spritePiece	-$1C, -$20, 1, 2, $46, 0, 0, 0, 0	; I
+	spritePiece	-$14, -$20, 2, 2, $1E, 0, 0, 0, 0	; C
 
-	spritePiece	4, -$18, 2, 2, $3E, 0, 0, 0, 0		; T
-	spritePiece	$14, -$18, 2, 2, $E, 0, 0, 0, 0		; E
-	spritePiece	$24, -$18, 2, 2, 4, 0, 0, 0, 0		; A
-	spritePiece	$34, -$18, 3, 2, 8, 0, 0, 0, 0		; M
+	spritePiece	4, -$20, 2, 2, $3E, 0, 0, 0, 0		; T
+	spritePiece	$14, -$20, 2, 2, $E, 0, 0, 0, 0		; E
+	spritePiece	$24, -$20, 2, 2, 4, 0, 0, 0, 0		; A
+	spritePiece	$34, -$20, 3, 2, 8, 0, 0, 0, 0		; M
 
-	spritePiece	-$40, 0, 2, 2, $12, 0, 0, 0, 0		; P
-	spritePiece	-$30, 0, 2, 2, $22, 0, 0, 0, 0		; R
-	spritePiece	-$20, 0, 2, 2, $E, 0, 0, 0, 0		; E
-	spritePiece	-$10, 0, 2, 2, $2E, 0, 0, 0, 0		; S
-	spritePiece	0, 0, 2, 2, $E, 0, 0, 0, 0		; E
-	spritePiece	$10, 0, 2, 2, $1A, 0, 0, 0, 0		; N
-	spritePiece	$20, 0, 2, 2, $3E, 0, 0, 0, 0		; T
-	spritePiece	$30, 0, 2, 2, $2E, 0, 0, 0, 0		; S
+	; Existing credits glyphs; 176 pixels wide, centered.
+	spritePiece	-88, -8, 2, 2, $4, 0, 0, 0, 0	; A
+	spritePiece	-72, -8, 2, 2, $1A, 0, 0, 0, 0	; N
+	spritePiece	-56, -8, 2, 2, $42, 0, 0, 0, 0	; D
+	spritePiece	-32, -8, 1, 2, $46, 0, 0, 0, 0	; I
+	spritePiece	-24, -8, 2, 2, $1A, 0, 0, 0, 0	; N
+	spritePiece	-8, -8, 2, 2, $42, 0, 0, 0, 0	; D
+	spritePiece	8, -8, 2, 2, $2A, 0, 0, 0, 0	; Y
+	spritePiece	24, -8, 2, 2, $42, 0, 0, 0, 0	; D
+	spritePiece	40, -8, 2, 2, $4, 0, 0, 0, 0	; A
+	spritePiece	56, -8, 2, 2, $58, 0, 0, 0, 0	; K
+	spritePiece	72, -8, 2, 2, $26, 0, 0, 0, 0	; O
+
+	spritePiece	-$40, $10, 2, 2, $12, 0, 0, 0, 0		; P
+	spritePiece	-$30, $10, 2, 2, $22, 0, 0, 0, 0		; R
+	spritePiece	-$20, $10, 2, 2, $E, 0, 0, 0, 0		; E
+	spritePiece	-$10, $10, 2, 2, $2E, 0, 0, 0, 0		; S
+	spritePiece	0, $10, 2, 2, $E, 0, 0, 0, 0		; E
+	spritePiece	$10, $10, 2, 2, $1A, 0, 0, 0, 0		; N
+	spritePiece	$20, $10, 2, 2, $3E, 0, 0, 0, 0		; T
+	spritePiece	$30, $10, 2, 2, $2E, 0, 0, 0, 0		; S
 .sonicteampresents_End
 
 	even

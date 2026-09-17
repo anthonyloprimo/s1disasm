@@ -275,7 +275,7 @@ RLoss_Count:	; Routine 0
 		tst.w	d4					; are we spawning another ring and it's even?
 		bmi.s	.setRingSpeed				; if yes, just repeat the last X/Y velocities but X-flipped
 		move.w	d4,d0					; copy current spread value
-		bsr.w	CalcSine				; calculate sine and cosine of current spread value (upper byte is ignored)
+		jsr	(CalcSine).l				; calculate sine and cosine of current spread value (upper byte is ignored)
 		move.w	d4,d2					; get current spread value again
 		lsr.w	#8,d2					; get upper byte of spread value ($2xx => 2)
 		asl.w	d2,d0					; boost X-speed by that value (multiply by 4)

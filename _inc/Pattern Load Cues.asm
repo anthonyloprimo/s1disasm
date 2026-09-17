@@ -312,6 +312,7 @@ PLC_WarpRev0_end:
 ; Pattern load cues - special stage
 ; ---------------------------------------------------------------------------
 PLC_SpecialStage:	plcheader
+		plcm	Nem_Ring,	ArtTile_Ring			; SS must not depend on title-screen ring loading
 		plcm	Nem_SSBgCloud,	ArtTile_SS_Background_Clouds	; bubble and cloud background
 		plcm	Nem_SSBgFish,	ArtTile_SS_Background_Fish	; bird and fish background
 		plcm	Nem_SSWalls,	ArtTile_SS_Wall			; walls
