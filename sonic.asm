@@ -740,6 +740,7 @@ VBlank_Lag:
 		writeCRAM	v_palette_water,0	; write water palette buffer to CRAM
 	.waterBelow:
 		move.w	(v_hblank_hreg).w,(a5)		; write HBlank trigger scan line for water palette swap to VDP
+		move.b	(v_hblank_line).w,(v_hblank_line_copy).w ; keep a stable copy for HBlank's staggered palette transfer
 		startZ80				; restart Z80
 
 		bra.w	VBlank_Music			; branch back to update sound driver and resume operation
@@ -822,6 +823,7 @@ VBlank_Levels:
 		writeCRAM	v_palette_water,0	; write water palette buffer to CRAM
 	.waterBelow:
 		move.w	(v_hblank_hreg).w,(a5)		; write HBlank trigger scan line for water palette swap to VDP
+		move.b	(v_hblank_line).w,(v_hblank_line_copy).w ; keep a stable copy for HBlank's staggered palette transfer
 
 		writeVRAM	v_hscrolltablebuffer,vram_hscroll ; transfer H-scroll buffer table to actual H-scroll VRAM
 		writeVRAM	v_spritetablebuffer,vram_sprites  ; transfer sprite buffer table to actual sprites VRAM
@@ -920,6 +922,7 @@ VBlank_Ending:
 		writeCRAM	v_palette_water,0	; write water palette buffer to CRAM
 	.waterBelow:
 		move.w	(v_hblank_hreg).w,(a5)		; write HBlank trigger scan line for water palette swap to VDP
+		move.b	(v_hblank_line).w,(v_hblank_line_copy).w ; keep a stable copy for HBlank's staggered palette transfer
 
 		writeVRAM	v_hscrolltablebuffer,vram_hscroll ; transfer H-scroll buffer table to actual H-scroll VRAM
 		writeVRAM	v_spritetablebuffer,vram_sprites  ; transfer sprite buffer table to actual sprites VRAM
@@ -964,6 +967,7 @@ VBlank_Unused0E:
 VBlank_PaletteFade:
 		bsr.w	VBlank_StandardTransfers	; do standard screen transfers
 		move.w	(v_hblank_hreg).w,(a5)		; write HBlank trigger scan line for water palette swap to VDP
+		move.b	(v_hblank_line).w,(v_hblank_line_copy).w ; keep a stable copy for HBlank's staggered palette transfer
 		bra.w	ProcessPLC_9Tiles		; decompress up to 9 Nemesis-compressed tiles
 
 ; ===========================================================================
@@ -1029,20 +1033,47 @@ VBlank_StandardTransfers:
 
 ; PalToCRAM: <-- old misnomer
 HBlank:
-		disable_ints				; disable interrupts (VBlank in this context)
 		tst.w	(f_hblank_pal).w		; is palette set to change?
 		beq.s	.nochg				; if not, branch
 		move.w	#0,(f_hblank_pal).w		; clear palette change flag
 
-		movem.l	a0-a1,-(sp)			; backup a0 and a1 registers
+		movem.l	d0-d1/a0-a2,-(sp)		; back up registers used by the staggered transfer
 		lea	(vdp_data_port).l,a1		; load VDP data port to a1
-		lea	(v_palette_water).w,a0		; get water palette from RAM
-		move.l	#$C0000000,4(a1)		; set VDP to CRAM write
-		rept (4*$10)/2				; overwrite full palette (4 rows, 2 colors per move)
-			move.l	(a0)+,(a1)		; move water palette to CRAM
-		endr					; repeat at assembly time
 		move.w	#$8A00+223,4(a1)		; reset horizontal interrupt counter
-		movem.l	(sp)+,a0-a1			; restore a0 and a1
+		stopZ80
+		waitZ80
+
+		movea.l	(v_watertranstable).w,a2	; load the water palette transition table
+		moveq	#$F,d0				; delay the first write to push artifacts off-screen
+.transitionDelay:
+		dbf	d0,.transitionDelay
+
+		move.w	(a2)+,d1			; number of staggered palette writes minus one
+		move.b	(v_hblank_line_copy).w,d0	; use the scanline captured during VBlank
+		subi.b	#200,d0				; is the H-interrupt below line 200?
+		bcs.s	.transferColors			; if not, perform the full transition
+		sub.b	d0,d1				; trim writes which would run beyond the display
+		bcs.s	.transferDone			; skip if no writes remain visible
+
+.transferColors:
+		move.w	(a2)+,d0			; palette byte offset and CRAM destination
+		lea	(v_palette_water).w,a0		; get underwater palette from RAM
+		adda.w	d0,a0
+		addi.w	#$C000,d0
+		swap	d0
+		move.l	d0,4(a1)			; select the corresponding CRAM address
+		move.l	(a0)+,(a1)			; transfer three adjacent colours
+		move.w	(a0)+,(a1)
+		nop
+		nop
+		moveq	#$24,d0
+.writeDelay:
+		dbf	d0,.writeDelay
+		dbf	d1,.transferColors
+
+.transferDone:
+		startZ80
+		movem.l	(sp)+,d0-d1/a0-a2		; restore registers
 
 		tst.b	(f_doupdatesinhblank).w		; was frame update delayed by water surface being near the top of the screen?
 		bne.s	.delayed_transfer		; if yes, resume transfer now
@@ -2754,6 +2785,7 @@ Level_ClrRam:
 
 		cmpi.b	#id_LZ,(v_zone).w		; is level LZ?
 		bne.s	Level_LoadPal			; if not, branch
+		move.l	#LZ_WaterTransition,(v_watertranstable).w ; use the sprite-free staggered water edge
 		move.w	#$8014,(a6)			; enable horizontal interrupts (HBlank)
 		moveq	#0,d0				; clear d0
 		move.b	(v_act).w,d0			; get current LZ act
@@ -2881,13 +2913,6 @@ Level_ChkDebug:
 Level_ChkWater:
 		move.w	#0,(v_jpadhold2).w		; clear button input states for Sonic player object
 		move.w	#0,(v_jpadhold1).w		; clear actual button input states for controller 1
-
-		cmpi.b	#id_LZ,(v_zone).w		; is level LZ?
-		bne.s	Level_LoadObj			; if not, branch
-		move.b	#id_WaterSurface,(v_watersurface1).w ; load water surface object A
-		move.w	#$60,(v_watersurface1+obX).w	; set base X-position for surface A
-		move.b	#id_WaterSurface,(v_watersurface2).w ; load water surface object B
-		move.w	#$120,(v_watersurface2+obX).w	; set base X-position for surface B
 
 Level_LoadObj:
 		jsr	(ObjPosLoad).l			; initialize object manager

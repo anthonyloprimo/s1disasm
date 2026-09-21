@@ -107,7 +107,8 @@ v_tryagain:		equ	v_objspace+object_size*3	; object variable space for the "TRY A
 v_eggmanchaos:		equ	v_objspace+object_size*32	; object variable space for the emeralds juggled by Eggman ($180 bytes)
 
 v_snddriver_ram:	SMPS_RAM				; sound driver state
-			ds.b	$40				; unused
+			ds.b	$3C				; unused
+v_watertranstable:	ds.l	1				; address of the water palette transition table
 
 v_gamemode:		ds.b	1				; game mode (00=Sega; 04=Title; 08=Demo; 0C=Level; 10=SS; 14=Cont; 18=End; 1C=Credit; +8C=PreLevel)
 			ds.b	1				; unused
@@ -133,7 +134,7 @@ v_pfade_size:		ds.b	1				; palette fading - number of colours
 
 v_misc_variables:
 v_vblank_0e_counter:	ds.b	1				; tracks how many times vertical interrupts routine 0E occurred (pretty much unused because routine 0E is unused)
-			ds.b	1				; unused
+v_hblank_line_copy:	ds.b	1				; stable copy of v_hblank_line for the water palette transition
 v_vblank_routine:	ds.b	1				; VBlank - routine counter (previously called v_vbla_routine)
 			ds.b	1				; unused
 v_spritecount:		ds.b	1				; number of sprites on-screen

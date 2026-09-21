@@ -535,3 +535,13 @@ Slide_Chunks:
 		dc.b 2, 7, 3, $4C, $4B, 8, 4
 Slide_Chunks_End:
 		even
+
+; Palette offsets used by the Sonic 3-style staggered water transition.
+; Each entry updates three colours, spreading the boundary over successive scanlines.
+LZ_WaterTransition:
+		dc.w $13	; number of entries minus one
+		dc.w $62,$68,$7A,$6E,$74
+		dc.w $42,$48,$4E,$54,$5A
+		dc.w $02,$08,$0E,$14,$1A
+		dc.w $34,$22,$3A,$2E,$28
+; ===========================================================================

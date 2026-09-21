@@ -183,14 +183,10 @@ Deform_LZ:
 
 ; REV01 - additional water ripple effects
 
-		lea	(Lz_Scroll_Data).l,a3			; get foreground ripple data
-		lea	(Drown_WobbleData).l,a2			; get background ripple data (see Objects\LZ Drowning Numbers.asm)
-		move.b	(v_lz_deform).w,d2			; get high byte of y pos. of ripple effect
-		move.b	d2,d3
-		addi.w	#$80,(v_lz_deform).w			; add $80 to low byte (i.e. high byte increments every other frame)
+		lea	(Lz_Scroll_Data).l,a3			; get shared foreground/background ripple data
+		move.b	(v_lz_deform).w,d3			; get high byte of y pos. of ripple effect
+		addi.w	#$100,(v_lz_deform).w			; advance ripple upward every frame (twice the original speed)
 
-		add.w	(v_bgscreenposy).w,d2
-		andi.w	#$FF,d2					; d2 = low byte of bg y pos
 		add.w	(v_screenposy).w,d3
 		andi.w	#$FF,d3					; d3 = low byte of camera y pos
 
@@ -214,7 +210,6 @@ Deform_LZ:
 		bge.s	.underwaterLoop				; if yes, branch
 		move.l	d0,(a1)+				; write to v_hscrolltablebuffer without ripple effect
 		addq.w	#1,d5					; next scanline
-		addq.b	#1,d2
 		addq.b	#1,d3
 		dbf	d1,.normalLoop
 		rts
@@ -222,27 +217,25 @@ Deform_LZ:
 
 		; apply ripple effects when underwater
 	.underwaterLoop:
-		move.b	(a3,d3.w),d4				; get fg ripple value from Lz_Scroll_Data
+		move.b	(a3,d3.w),d4				; get shared ripple value from Lz_Scroll_Data
 		ext.w	d4
+		move.w	d4,d5					; apply the same distortion to both tile planes
 		add.w	d6,d4
-		move.w	d4,(a1)+				; write to v_hscrolltablebuffer
-		move.b	(a2,d2.w),d4				; get bg ripple value from Drown_WobbleData
-		ext.w	d4
-		add.w	d0,d4
-		move.w	d4,(a1)+				; write to v_hscrolltablebuffer
-		addq.b	#1,d2
+		move.w	d4,(a1)+				; write foreground scroll
+		add.w	d0,d5
+		move.w	d5,(a1)+				; write background scroll
 		addq.b	#1,d3
 		dbf	d1,.underwaterLoop
 		rts
 ; ===========================================================================
 
 Lz_Scroll_Data:
-		dc.b 1,1,2,2,3,3,3,3,2,2,1,1			; 12 lines shifted to right
-		dcb.b 116, 0					; 116 lines normal
-		dc.b -1,-1,-2,-2,-3,-3,-3,-3,-2,-2,-1,-1	; 12 lines shifted to left
-		dcb.b 20, 0					; 20 lines normal
-		dc.b 1,1,2,2,3,3,3,3,2,2,1,1			; 12 lines shifted to right
-		dcb.b 84, 0					; 84 lines normal (total 256 lines)
+		dc.b 1,1,1,1,2,2,2,2,3,3,3,3,3,3,3,3,2,2,2,2,1,1,1,1	; 24 lines shifted to right
+		dcb.b 104, 0					; preserve the original 128-line interval
+		dc.b -1,-1,-1,-1,-2,-2,-2,-2,-3,-3,-3,-3,-3,-3,-3,-3,-2,-2,-2,-2,-1,-1,-1,-1 ; 24 lines shifted to left
+		dcb.b 8, 0					; preserve the original 32-line interval
+		dc.b 1,1,1,1,2,2,2,2,3,3,3,3,3,3,3,3,2,2,2,2,1,1,1,1	; 24 lines shifted to right
+		dcb.b 72, 0					; preserve the original 96-line interval (total 256 lines)
 ; End of function Deform_LZ
 
 ; ===========================================================================
