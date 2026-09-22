@@ -736,6 +736,8 @@ PlaySegaSound:
 		move.w	#$11,d1
 ; loc_71FC0:
 .busyloop_outer:
+		jsr (Splash_SegaPCMInput).l
+		bmi.s .finished
 		move.w	#-1,d0
 ; loc_71FC4:
 .busyloop:
@@ -744,6 +746,7 @@ PlaySegaSound:
 
 		dbf	d1,.busyloop_outer
 
+.finished:
 		addq.w	#4,sp	; Tamper return value so we don't return to caller
 		rts
 ; ===========================================================================

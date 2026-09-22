@@ -28,6 +28,7 @@ BuildSprites:
 		bne.s	.noSSTimer
 		jsr	(SS_DrawTimerSprites).l
 .noSSTimer:
+		jsr	(TitleOrbit_Draw).l
 		lea	(v_spritequeue).w,a4
 		moveq	#spritelayer_num-1,d7
 .priorityLoop:
@@ -127,6 +128,7 @@ BuildSprites:
 .nextPriority:
 		lea	spritelayer_size(a4),a4		; advance to next layer (each layer is $80 bytes)
 		dbf	d7,.priorityLoop
+		jsr	(TitleOrbit_DrawRear).l
 		
 		move.b	d5,(v_spritecount).w		; write number of rendered sprites to debug var
 		cmpi.b	#sprites_max,d5			; check if sprite limit was exhausted

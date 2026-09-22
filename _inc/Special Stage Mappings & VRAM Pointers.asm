@@ -56,7 +56,8 @@ id_SS_WallGreen_8:	specialStageData	0, Map_SSWalls,   Tile_Pal4, ArtTile_SS_Wall
 
 ; Solid action blocks
 id_SS_Bumper:		specialStageData	0, Map_Bump,      Tile_Pal1, ArtTile_SS_Bumper		; $25 - bumper (idle)
-id_SS_W:		specialStageData	0, Map_SS_Shared, Tile_Pal1, ArtTile_SS_W_Block		; $26 - W block (unused)
+id_SS_W:		specialStageData	0, Map_SS_Glass,  Tile_Pal1, ArtTile_SS_W_Block		; $26 - capture block (former unused W slot)
+id_SS_Capture:		equ id_SS_W
 id_SS_GOAL:		specialStageData	0, Map_SS_Shared, Tile_Pal1, ArtTile_SS_Goal		; $27 - GOAL block
 id_SS_1Up:		specialStageData	0, Map_SS_Shared, Tile_Pal1, ArtTile_SS_Extra_Life	; $28 - 1-Up block (hardcoded to be non-solid)
 id_SS_UP:		specialStageData	0, Map_SS_Up,     Tile_Pal1, ArtTile_SS_Up_Down		; $29 - UP block

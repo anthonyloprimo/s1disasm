@@ -6,6 +6,7 @@ Map_PSB_internal:	mappingsTable
 	mappingsTableEntry.w	.psb
 	mappingsTableEntry.w	.spritemask
 	mappingsTableEntry.w	.tm
+	mappingsTableEntry.w	.shortmask
 
 .psb:	spriteHeader
 	spritePiece	0, 0, 4, 1, $F0, 0, 0, 0, 0	; "PRESS START BUTTON"
@@ -54,5 +55,18 @@ Map_PSB_internal:	mappingsTable
 .tm:	spriteHeader
 	spritePiece	-8, -4, 2, 1, 0, 0, 0, 0, 0	; "TM"
 .tm_End
+
+.shortmask:	spriteHeader
+	spritePiece	-$80, -$48, 4, 4, 0, 0, 0, 0, 0
+	spritePiece	-$80, -$48, 4, 4, 0, 0, 0, 0, 0
+	spritePiece	-$80, -$48, 4, 4, 0, 0, 0, 0, 0
+	spritePiece	-$80, -$48, 4, 4, 0, 0, 0, 0, 0
+	spritePiece	-$80, -$48, 4, 4, 0, 0, 0, 0, 0
+	spritePiece	-$80, -$48, 4, 4, 0, 0, 0, 0, 0
+	spritePiece	-$80, -$48, 4, 4, 0, 0, 0, 0, 0
+	spritePiece	-$80, -$48, 4, 4, 0, 0, 0, 0, 0
+	spritePiece	-$80, -$48, 4, 4, 0, 0, 0, 0, 0
+	spritePiece	-$80, -$48, 4, 4, 0, 0, 0, 0, 0
+.shortmask_End
 
 	even

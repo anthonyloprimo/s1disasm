@@ -71,6 +71,12 @@ SonicSS_Control: ; Routine 2
 
 ; Obj09_NoDebug:
 SonicSS_NoDebug:
+		jsr	(SonicSS_CaptureControl).l
+		tst.b	d0
+		beq.s	.normalControl
+		bsr.w	SonicSS_UpdateView
+		bra.s	.render
+.normalControl:
 		move.b	#0,sonss_touchedblock_id(a0)		; reset currently touched block to none (blank)
 
 		moveq	#0,d0					; clear d0
@@ -79,6 +85,7 @@ SonicSS_NoDebug:
 		move.w	SonicSS_Modes(pc,d0.w),d1		; use that as routine counter for the correct mode
 		jsr	SonicSS_Modes(pc,d1.w)			; jump to that mode
 
+	.render:
 		jsr	(Sonic_LoadGfx).l			; update Sonic's graphics if necessary (accessing Obj01)
 		jmp	(DisplaySprite).l			; display Sonic's sprites
 
@@ -113,6 +120,7 @@ SonicSS_Display:
 		bsr.w	SonicSS_ChkItems_SolidActionBlock	; check if items with collision were touched (UP/DOWN blocks etc.)
 
 		jsr	(SpeedToPos).l				; apply velocity and update position
+SonicSS_UpdateView:
 		bsr.w	SS_FixCamera				; keep camera fixated on Sonic
 
 		move.w	(v_ssangle).w,d0			; get current stage rotation angle
@@ -177,8 +185,10 @@ SonicSS_CheckDpadLetGo:
 ; loc_1BAA8:
 SonicSS_AngleSpeed:
 		move.b	(v_ssangle).w,d0			; get current angle of the special stage rotation
+	if SmoothSpecialStageRotation=0
 		addi.b	#$20,d0					; rotate angle by 45 degrees clockwise
 		andi.b	#$C0,d0					; snap angle to nearest multiple of 90 degrees
+	endif
 		neg.b	d0					; negate for sine calculation
 		jsr	(CalcSine).l				; get sine and cosine values based on angle
 		muls.w	obInertia(a0),d1			; multiply cosine value by current ground speed
@@ -298,7 +308,9 @@ SonicSS_Jump:
 		beq.s	SonicSS_NoJump				; if not, branch
 
 		move.b	(v_ssangle).w,d0			; get current angle of the special stage rotation
+	if SmoothSpecialStageRotation=0
 		andi.b	#$FC,d0					; snap to nearest multiple of 4 to match stage rotation
+	endif
 		neg.b	d0					; negate for sine calculation
 		subi.b	#$40,d0					; rotate it perpendicularly for jump trajectory
 		jsr	(CalcSine).l				; get sine and cosine values based on angle
@@ -339,7 +351,9 @@ SonicSS_JumpHeight_Unused:
 
 		; Recreate the outward unit vector used by SonicSS_Jump.
 		move.b	(v_ssangle).w,d0
+	if SmoothSpecialStageRotation=0
 		andi.b	#$FC,d0
+	endif
 		neg.b	d0
 		subi.b	#$40,d0
 		jsr	(CalcSine).l				; d0 = outward Y, d1 = outward X (8.8)
@@ -472,7 +486,9 @@ SonicSS_Fall:
 		move.l	obY(a0),d2				; get Sonic's current Y position
 		move.l	obX(a0),d3				; get Sonic's current X position
 		move.b	(v_ssangle).w,d0			; get current angle of the special stage rotation
+	if SmoothSpecialStageRotation=0
 		andi.b	#$FC,d0					; snap to nearest multiple of 4 to match stage rotation
+	endif
 		jsr	(CalcSine).l				; get sine and cosine values based on angle
 
 		move.w	obVelX(a0),d4				; get Sonic's current X velocity
@@ -607,8 +623,16 @@ SonicSS_FindWall_CheckType:
 
 ; loc_1BD46:
 .solidblock:
+		; Once a capture contact is found, nearby ordinary walls must not erase it.
+		; During release grace, keep the original collision ordering.
+		tst.b	sonss_capture_cooldown(a0)
+		bne.s	.rememberBlock
+		cmpi.b	#id_SS_Capture,sonss_touchedblock_id(a0)
+		beq.s	.solidFound
+.rememberBlock:
 		move.b	d4,sonss_touchedblock_id(a0)		; remember ID of touched block
 		move.l	a1,sonss_touchedblock_ram(a0)		; remember RAM address of touched block
+.solidFound:
 		moveq	#-1,d5					; set flag that a solid block was found
 		rts						; return with d5 changed
 ; End of function SonicSS_FindWall
@@ -809,6 +833,10 @@ SonicSS_ChkItems_SolidActionBlock:
 
 ; Obj09_ChkBumper:
 SonicSS_ChkBumper:
+		cmpi.b	#id_SS_Capture,d0
+		bne.s	.notCapture
+		jmp	(SonicSS_CaptureTouch).l
+.notCapture:
 		cmpi.b	#id_SS_Bumper,d0			; is the item a bumper?
 		bne.s	SonicSS_ChkGOAL				; if not, branch
 

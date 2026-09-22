@@ -13,7 +13,9 @@ SS_ShowLayout:
 
 		lea	(v_ss_rotationmatrix).w,a1		; set start of rotation buffer (each entry is two words per cell, X/Y axis)
 		move.b	(v_ssangle).w,d0			; get current angle of the special stage rotation
+	if SmoothSpecialStageRotation=0
 		andi.b	#$FC,d0					; snap to nearest multiple of 4 to match stage rotation
+	endif
 		jsr	(CalcSine).l				; get sine and cosine values based on angle
 		move.w	d0,d4					; backup sine result
 		move.w	d1,d5					; backup cosine result

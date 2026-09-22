@@ -17,6 +17,10 @@ Revision = 1
 ; 	| If 2, build the hacked version from Sonic Mega Collection, dubbed REVXB,
 ;	|       which (sloppily) fixes the infamous "spike bug" -- not recommended
 
+SmoothSpecialStageRotation = 1
+;	| 1 = smooth layout, gravity, jumping, and steering angles.
+;	| 0 = restore the previous snapped rotation and steering; rebuild to apply.
+
 FixBugs = 0
 ;	| If 1, enables various bugfixes across the game and sound driver
 ;	|       (see also the "_Fixed Binary Files" folder, and FixMusicAndSFXDataBugs)
@@ -1860,10 +1864,13 @@ GM_Sega:
 Sega_WaitPal:	; while light scanning effect is active
 		move.b	#id_VBlank_Sega,(v_vblank_routine).w ; set VBlank routine to $02
 		bsr.w	WaitForVBlank			; wait for VBlank to finish
+		btst #bitStart,(v_jpadpress1).w
+		bne.w Sega_GotoTitle
 		bsr.w	PalCycle_Sega			; advance light scanning palette cycle effect
 		bne.s	Sega_WaitPal			; loop until it's finished
 ; ---------------------------------------------------------------------------
 
+		clr.w (v_generictimer).w ; chant skip latch
 		; while "SEGA" sound is playing
 		move.b	#sfx_Sega,d0			; set "SEGA" sound
 		bsr.w	QueueSound2			; queue it
@@ -1871,6 +1878,8 @@ Sega_WaitPal:	; while light scanning effect is active
 		bsr.w	WaitForVBlank			; wait for VBlank to play the sound (CPU is frozen here until sound finished playing)
 ; ---------------------------------------------------------------------------
 
+		tst.w (v_generictimer).w
+		bmi.s Sega_GotoTitle
 		; after sound has finished playing
 		move.w	#30,(v_generictimer).w		; wait 30 frames before automatic fade-out
 
@@ -1884,6 +1893,12 @@ Sega_WaitEnd:
 ; ---------------------------------------------------------------------------
 
 Sega_GotoTitle:	; transition to title screen
+		; Reset the DAC on a skipped chant, then use the usual title transition.
+		tst.w (v_generictimer).w
+		bpl.s .soundReady
+		jsr (DACDriverLoad).l
+.soundReady:
+		clr.w (v_generictimer).w
 		move.b	#id_Title,(v_gamemode).w	; go to title screen
 		rts
 ; End of function GM_Sega
@@ -1915,6 +1930,7 @@ GM_Title:	; fading out from previous game mode
 		move.w	#$8720,(a6)			; set background colour (palette line 2, entry 0)
 		clr.b	(f_wtr_state).w			; clear water state
 		bsr.w	ClearScreen			; wipe the screen
+		jsr	SHC
 		clearRAM v_objspace			; clear object RAM
 
 		locVRAM	ArtTile_Title_Japanese_Text*tile_size ; set target VRAM location for hidden Japanese credits
@@ -1943,7 +1959,7 @@ GM_Title:	; fading out from previous game mode
 		move.b	#id_CreditsText,(v_sonicteam).w	; load "SONIC TEAM PRESENTS" object
 		jsr	(ExecuteObjects).l		; execute objects to load STP object
 		jsr	(BuildSprites).l		; build sprites for the STP object
-		bsr.w	PaletteFadeIn			; fade-in STP screen
+		jsr (Splash_PresentsFadeIn).l	; Start skips presentation waits
 ; ---------------------------------------------------------------------------
 
 		; load main title screen patterns while "SONIC TEAM PRESENTS" screen is shown
@@ -1952,14 +1968,17 @@ GM_Title:	; fading out from previous game mode
 		locVRAM	ArtTile_Title_Foreground*tile_size ; set target VRAM location title screen foreground emblem
 		lea	(Nem_TitleFg).l,a0		; load title screen foreground emblem patterns
 		bsr.w	NemDec				; decompress Nemesis-compressed patterns directly to VRAM
+		jsr (Splash_PresentsPoll).l
 
 		locVRAM	ArtTile_Title_Sonic*tile_size	; set target VRAM location big Sonic object
 		lea	(Nem_TitleSonic).l,a0		; load big Sonic title screen patterns
 		bsr.w	NemDec				; decompress Nemesis-compressed patterns directly to VRAM
+		jsr (Splash_PresentsPoll).l
 
 		locVRAM	ArtTile_Title_Trademark*tile_size ; set target VRAM location for "TM" patterns
 		lea	(Nem_TitleTM).l,a0		; load "TM" patterns
 		bsr.w	NemDec				; decompress Nemesis-compressed patterns directly to VRAM
+		jsr (Splash_PresentsPoll).l
 
 		lea	(vdp_data_port).l,a6		; load VDP data transfer port
 		locVRAM	ArtTile_Level_Select_Font*tile_size,4(a6) ; set target VRAM location for level select font
@@ -1982,13 +2001,16 @@ Tit_LoadText:
 		lea	(Blk16_GHZ).l,a0		; load GHZ 16x16 blocks mappings
 		move.w	#ArtTile_Level,d0		; set to target VRAM address $0000
 		bsr.w	EniDec				; decompress Enigma-compressed blocks mappings to buffer
+		jsr (Splash_PresentsPoll).l
 
 		lea	(Blk256_GHZ).l,a0		; load GHZ 256x256 mappings
 		lea	(v_256x256).l,a1		; set target buffer for chunks mappings
 		bsr.w	KosDec				; decompress Kosinski-compressed chunks mappings to buffer
+		jsr (Splash_PresentsPoll).l
 
 		bsr.w	LevelLayoutLoad			; load level layout for the background
-		bsr.w	PaletteFadeOut			; fade-out "SONIC TEAM PRESENTS" screen
+		jsr (Splash_PresentsPoll).l
+		jsr (Splash_PresentsFadeOut).l	; complete fade cleanup, skipping waits on Start
 ; ---------------------------------------------------------------------------
 
 		; "SONIC TEAM PRESENTS" screen has faded out, load remaining patterns and fade in
@@ -2003,23 +2025,18 @@ Tit_LoadText:
 		lea	(Eni_Title).l,a0		; load title screen emblem mappings
 		move.w	#ArtTile_Level,d0		; =$0000 (emblem mappings are themselves set up with a +$2000 offset per tile)
 		bsr.w	EniDec				; decompress Enigma-compressed emblem mappings to buffer
-	if FixBugs
-		; Fix title screen position
-		; https://info.sonicretro.org/SCHG_How-to:Fix_the_Title_Screen_position_in_Sonic_1
-		copyTilemap	v_ram_start,vram_fg+$208,34,22 ; transfer decompressed patterns from RAM buffer to VRAM (correctly centered)
-	else
-		copyTilemap	v_ram_start,vram_fg+$206,34,22 ; transfer decompressed patterns from RAM buffer to VRAM (off-center)
-	endif
+		; Sonic Retro title centering: tilemap +$208 and sprites +8px.
+		; Begin 8px lower so the later 32px rise does not clip Sonic.
+		; Keep the copyright on the stationary background plane.
+		jsr (TitleOrbit_SetLogoPriority).l
+		copyTilemap v_ram_start,vram_fg+$288,34,21
+		copyTilemap v_ram_start+34*21*2,vram_bg+(25<<7)+8,34,1
 		; System-font author credit, right-aligned above the SEGA copyright.
 		; The title artwork does not contain a complete italic alphabet/digit set.
 		lea	(TitleAuthorText).l,a1
 		moveq	#TitleAuthorText_End-TitleAuthorText-1,d1
 		move.w	#ArtTile_Level_Select_Font|Tile_Pal1|Tile_Prio,d3
-	if FixBugs
-		locVRAM	vram_fg+(24<<7)+(25<<1),4(a6)
-	else
-		locVRAM	vram_fg+(24<<7)+(24<<1),4(a6)
-	endif
+		locVRAM	vram_bg+(24<<7)+(25<<1),4(a6)
 .DrawAuthor:
 		moveq	#0,d0
 		move.b	(a1)+,d0
@@ -2037,7 +2054,7 @@ Tit_LoadText:
 		lea	(TitleVersionText).l,a1
 		moveq	#5-1,d1
 		move.w	#ArtTile_Level_Select_Font|Tile_Pal1|Tile_Prio,d3
-		locVRAM	vram_fg+(27<<7)+(35<<1),4(a6)
+		locVRAM	vram_bg+(27<<7)+(35<<1),4(a6)
 .DrawVersion:
 		moveq	#0,d0
 		move.b	(a1)+,d0
@@ -2053,6 +2070,7 @@ Tit_LoadText:
 
 		moveq	#palid_Title,d0			; load title screen palette...
 		bsr.w	PalLoad_Fade			; ...to fade-in buffer
+		jsr	(TitleOrbit_Load).l
 		move.b	#bgm_Title,d0			; set title screen music
 		bsr.w	QueueSound2			; play title screen music
 		move.b	#0,(f_debugmode).w		; disable debug mode (cheat remains active though)
@@ -2100,9 +2118,11 @@ Tit_LoadText:
 Tit_MainLoop:
 		move.b	#id_VBlank_Title,(v_vblank_routine).w ; set VBlank routine to $04
 		bsr.w	WaitForVBlank			; wait for VBlank to finish
+		jsr	(TitlePresentation_Update).l
 		jsr	(ExecuteObjects).l		; execute title screen objects
 		jsr	(BuildSprites).l		; display sprites
-		bsr.w	PalCycle_Title			; run title screen palette cycle
+		jsr	(TitlePresentation_Draw).l
+		; Former water-cycle palette entries now belong to the orbit emeralds.
 		bsr.w	RunPLC				; run any potential PLC
 
 Tit_ChkRegion:
@@ -2177,6 +2197,8 @@ Tit_CountC:
 
 ; loc_3230:
 Tit_ChkStartOrDemo:
+		cmpi.b	#3,(title_phase).w
+		bne.w	Tit_MainLoop
 		andi.b	#btnStart,(v_jpadpress1).w	; check if Start is pressed
 		beq.w	Tit_MainLoop			; if not, continue looping title screen
 		bra.w	CursedStartSpecial		; this hack consists only of the Special Stages
@@ -2386,7 +2408,7 @@ TitleAuthorText_End:
 		even
 
 TitleVersionText:
-		dc.b	$26,$FF,$00,$0E,$06		; "V 0.6"
+		dc.b	$26,$FF,$00,$0E,$07		; "V 0.7"
 		even
 
 ; ===========================================================================
@@ -3630,7 +3652,7 @@ SS_CursedRestart:	dc.b "PRESS START TO RESTART"
 SS_CursedRestart_End:
 SS_CursedEmeralds:	dc.b "EMERALDS "
 SS_CursedMisses:	dc.b "MISSES "
-SS_CursedVersion:	dc.b "V 0.6"
+SS_CursedVersion:	dc.b "V 0.7"
 	charset
 	even
 ; ===========================================================================
@@ -4623,6 +4645,8 @@ Eni_JapNames:	binclude	"tilemaps/Hidden Japanese Credits.eni" ; Japanese credits
 		even
 Nem_JapNames:	binclude	"artnem/Hidden Japanese Credits.nem"
 		even
+SHC:		binclude	"SHC_Splash.bin" ; SHC splash screen
+		even
 
 ; ---------------------------------------------------------------------------
 ; Uncompressed graphics - Sonic
@@ -4703,7 +4727,7 @@ Nem_SSEmerald:	binclude	"artnem/Special Emeralds.nem" ; special stage chaos emer
 		even
 Nem_SSGhost:	binclude	"artnem/Special Ghost.nem" ; special stage ghost block
 		even
-Nem_SSWBlock:	binclude	"artnem/Special W.nem"	; special stage W block
+Nem_SSWBlock:	binclude	"artnem/Special W.nem"	; special stage capture block (former W slot)
 		even
 Nem_SSGlass:	binclude	"artnem/Special Glass.nem" ; special stage destroyable glass block
 		even
@@ -5452,6 +5476,10 @@ SoundDriver:	include "s1.sounddriver.asm"
 		even
 
 ; ---------------------------------------------------------------------------
+
+		include "_inc/Title Presentation.asm"
+
+		include "_inc/Special Stage Capture Block.asm"
 
 ; end of 'ROM'
 EndOfRom:

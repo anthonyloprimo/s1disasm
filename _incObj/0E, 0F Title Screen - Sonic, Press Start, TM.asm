@@ -17,15 +17,10 @@ TSon_Index:	dc.w TSon_Main-TSon_Index
 
 TSon_Main:	; Routine 0
 		addq.b	#2,obRoutine(a0)			; advance to TSon_Delay
-	if FixBugs
-		; Fix horizontal title screen position
 		move.w	#$80+$78,obX(a0)			; +8px
-	else
-		move.w	#$80+$70,obX(a0)			; original X-position
-	endif
-		move.w	#$80+$5E,obScreenY(a0)			; set initial Y-position
+		move.w	#$80+$66,obScreenY(a0)			; set initial Y-position
 		move.l	#Map_TSon,obMap(a0)			; set mappings
-		move.w	#ArtTile_Title_Sonic|Tile_Pal2,obGfx(a0) ; set art tile and palette line
+		move.w	#ArtTile_Title_Sonic|Tile_Pal2|Tile_Prio,obGfx(a0) ; set art tile and palette line
 		move.b	#1,obPriority(a0)			; set sprite priority
 		move.b	#30-1,obDelayAni(a0)			; set time delay before Sonic moves in to 0.5 seconds
 		lea	(Ani_TSon).l,a1				; load animation script
@@ -43,7 +38,7 @@ TSon_Delay:	; Routine 2
 
 TSon_Move:	; Routine 4
 		subq.w	#8,obScreenY(a0)			; move Sonic up
-		cmpi.w	#$80+$16,obScreenY(a0)			; has Sonic reached final Y-position?
+		cmpi.w	#$80+$1E,obScreenY(a0)			; has Sonic reached final Y-position?
 		bne.s	.display				; if not, branch
 		addq.b	#2,obRoutine(a0)			; advance to TSon_Animate
 	.display:
@@ -82,32 +77,23 @@ PSB_Main:	; Routine 0
 		; (see the code around ".isjap" in "GM_Title").
 
 		addq.b	#2,obRoutine(a0)			; advance to PSB_PrsStart (animate)
-	if FixBugs
-		; Fix horizontal title screen position
 		move.w	#$80+$58,obX(a0)			; +8px
-	else
-		move.w	#$80+$50,obX(a0)			; original X-position
-	endif
 		move.w	#$80+$B0,obScreenY(a0)			; set Y-position
 		move.l	#Map_PSB,obMap(a0)			; set mappings
-		move.w	#ArtTile_Title_Foreground,obGfx(a0)	; set art tile (PSB tiles are inside the foreground emblem's graphics)
+		move.w	#ArtTile_Title_Foreground|Tile_Prio,obGfx(a0)	; set art tile (PSB tiles are inside the foreground emblem's graphics)
 
 		cmpi.b	#2,obFrame(a0)				; is object "PRESS START"?
 		blo.s	PSB_PrsStart				; if yes, branch
 
 		; Object is either TM or masking sprites
+		addq.w	#8,obScreenY(a0)		; logo starts 8px lower before its rise
 		addq.b	#2,obRoutine(a0)			; advance to PSB_Exit (static)
 		cmpi.b	#3,obFrame(a0)				; is the object "TM"?
 		bne.s	PSB_Exit				; if not, branch (object is masking sprites)
 
-		move.w	#ArtTile_Title_Trademark|Tile_Pal2,obGfx(a0) ; "TM" specific art tile
-	if FixBugs
-		; Fix horizontal title screen position
+		move.w	#ArtTile_Title_Trademark|Tile_Pal2|Tile_Prio,obGfx(a0) ; "TM" specific art tile
 		move.w	#$80+$F8,obX(a0)			; +8px
-	else
-		move.w	#$80+$F0,obX(a0)			; original X-position
-	endif
-		move.w	#$80+$78,obScreenY(a0)			; set Y-position for TM
+		move.w	#$80+$80,obScreenY(a0)			; set Y-position for TM
 ; ---------------------------------------------------------------------------
 
 PSB_Exit:	; Routine 4
@@ -115,6 +101,11 @@ PSB_Exit:	; Routine 4
 ; ===========================================================================
 
 PSB_PrsStart:	; Routine 2
+		cmpi.b	#3,(title_phase).w
+		beq.s	.ready
+		clr.b	obFrame(a0)
+		rts
+.ready:
 		lea	(Ani_PSBTM).l,a1			; "PRESS START" is animated
 		bra.w	AnimateSprite				; flash PSB object
 

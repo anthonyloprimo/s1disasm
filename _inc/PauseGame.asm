@@ -238,7 +238,7 @@ CursedPauseDivider:		dc.b "----------"
 CursedPauseMissNote:		dc.b "COUNTS AS A MISS"
 CursedPauseEmeraldCount:	dc.b "EMERALDS "
 CursedPauseMissCount:		dc.b "MISSES "
-CursedPauseVersion:		dc.b "V 0.6"
+CursedPauseVersion:		dc.b "V 0.7"
 	charset
 	even
 CursedPauseStarArt:
